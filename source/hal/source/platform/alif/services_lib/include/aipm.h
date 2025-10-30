@@ -157,7 +157,7 @@ typedef enum {
 	SCALED_FREQ_NONE                                                                     /**< SCALED_FREQ_NONE */
 } scaled_clk_freq_t;
 
-#ifdef BALLETTO_DEVICE
+#if defined(BALLETTO_DEVICE) || defined(ENSEMBLE_SOC_E1C)
 /**
  * @enum memory_block_t
  * @brief Memory Blocks
@@ -215,59 +215,63 @@ typedef enum {
  * @brief Memory Blocks
  */
 typedef enum {
-  MB_SRAM0_1 = 0,/**< MB_SRAM0 */
-  MB_SRAM0_2,/**< MB_SRAM0 */
-  MB_SRAM0_3,/**< MB_SRAM0 */
-  MB_SRAM0_4,/**< MB_SRAM0 */
-  MB_SRAM1,    /**< MB_SRAM1 */
-  MB_SRAM2,    /**< MB_SRAM2 */
-  MB_SRAM3,    /**< MB_SRAM3 */
-  MB_SRAM4_1, // M55-HE ITCM RET1 itcm 128kb;
-  MB_SRAM4_2, // M55-HE ITCM RET2 itcm 128kb;
-  MB_SRAM5_1, // M55-HE DTCM RET1 dtcm 128kb
-  MB_SRAM5_2, // M55-HE DTCM RET2 dtcm 128kb
+  MB_SRAM0 = 0,   // MB_SRAM0
+  MB_SRAM1,       // MB_SRAM1
+  MB_SRAM2,       // MB_SRAM2
+  MB_SRAM3,       // MB_SRAM3
+  MB_SRAM4_1,     // M55-HE ITCM RET1 itcm 128kb;
+  MB_SRAM4_2,     // M55-HE ITCM RET2 itcm 128kb;
+  MB_SRAM5_1,     // M55-HE DTCM RET1 dtcm 128kb
+  MB_SRAM5_2,     // M55-HE DTCM RET2 dtcm 128kb
   MB_SRAM6A,
   MB_SRAM6B,
   MB_SRAM7_1,
   MB_SRAM7_2,
   MB_SRAM7_3,
-  MB_SRAM8,    /**< MB_SRAM8 */
-  MB_SRAM9,    /**< MB_SRAM9 */
-  MB_MRAM,     /**< MB_MRAM */
-  MB_OSPI0,    /**< MB_OSPI0 */
-  MB_OSPI1,    /**< MB_OSPI1 */
+  MB_SRAM8,       // MB_SRAM8
+  MB_SRAM9,       // MB_SRAM9
+  MB_MRAM,        // MB_MRAM
+  MB_OSPI0,       // MB_OSPI0
+  MB_OSPI1,       // MB_OSPI1
   MB_SERAM_1,
   MB_SERAM_2,
-  MB_FWRAM,    /**< MB_FWRAM */
-  MB_BACKUP4K  /**< MB_BACKUP4K */
+  MB_FWRAM,       // MB_FWRAM
+  MB_BACKUP4K,    // MB_BACKUP4K
+  MB_SRAM0_1_RET, // MB_SRAM0_1_RET
+  MB_SRAM0_2_RET, // MB_SRAM0_2_RET
+  MB_SRAM0_3_RET, // MB_SRAM0_3_RET
+  MB_SRAM0_4_RET, // MB_SRAM0_4_RET
+  MB_SRAM1_RET,   // MB_SRAM1_RET
 } memory_block_t;
 
 /* Memory block bit mask */
-#define SRAM0_1_MASK    (1 << MB_SRAM0_1)     // bit0
-#define SRAM0_2_MASK    (1 << MB_SRAM0_2)     // bit1
-#define SRAM0_3_MASK    (1 << MB_SRAM0_3)     // bit2
-#define SRAM0_4_MASK    (1 << MB_SRAM0_4)     // bit3
-#define SRAM1_MASK      (1 << MB_SRAM1)       // bit4
-#define SRAM2_MASK      (1 << MB_SRAM2)       // bit5
-#define SRAM3_MASK      (1 << MB_SRAM3)       // bit6
-#define SRAM4_1_MASK    (1 << MB_SRAM4_1)     // bit7
-#define SRAM4_2_MASK    (1 << MB_SRAM4_2)     // bit8
-#define SRAM5_1_MASK    (1 << MB_SRAM5_1)     // bit9
-#define SRAM5_2_MASK    (1 << MB_SRAM5_2)     // bit10
-#define SRAM6A_MASK     (1 << MB_SRAM6A)      // bit11
-#define SRAM6B_MASK     (1 << MB_SRAM6B)      // bit12
-#define SRAM7_1_MASK    (1 << MB_SRAM7_1)     // bit13
-#define SRAM7_2_MASK    (1 << MB_SRAM7_2)     // bit14
-#define SRAM7_3_MASK    (1 << MB_SRAM7_3)     // bit15
-#define SRAM8_MASK      (1 << MB_SRAM8)       // bit16
-#define SRAM9_MASK      (1 << MB_SRAM9)       // bit17
-#define MRAM_MASK       (1 << MB_MRAM)        // bit18
-#define OSPI0_MASK      (1 << MB_OSPI0)       // bit19
-#define OSPI1_MASK      (1 << MB_OSPI1)       // bit20
-#define SERAM_1_MASK    (1 << MB_SERAM_1)     // bit21
-#define SERAM_2_MASK    (1 << MB_SERAM_2)     // bit22
-#define FWRAM_MASK      (1 << MB_FWRAM)       // bit23
-#define BACKUP4K_MASK   (1 << MB_BACKUP4K)    // bit24
+#define SRAM0_MASK          (1 << MB_SRAM0)          // bit0
+#define SRAM1_MASK          (1 << MB_SRAM1)          // bit1
+#define SRAM2_MASK          (1 << MB_SRAM2)          // bit2
+#define SRAM3_MASK          (1 << MB_SRAM3)          // bit3
+#define SRAM4_1_MASK        (1 << MB_SRAM4_1)        // bit4
+#define SRAM4_2_MASK        (1 << MB_SRAM4_2)        // bit5
+#define SRAM5_1_MASK        (1 << MB_SRAM5_1)        // bit6
+#define SRAM5_2_MASK        (1 << MB_SRAM5_2)        // bit7
+#define SRAM6A_MASK         (1 << MB_SRAM6A)         // bit8
+#define SRAM6B_MASK         (1 << MB_SRAM6B)         // bit9
+#define SRAM7_1_MASK        (1 << MB_SRAM7_1)        // bit10
+#define SRAM7_2_MASK        (1 << MB_SRAM7_2)        // bit11
+#define SRAM7_3_MASK        (1 << MB_SRAM7_3)        // bit12
+#define SRAM8_MASK          (1 << MB_SRAM8)          // bit13
+#define SRAM9_MASK          (1 << MB_SRAM9)          // bit14
+#define MRAM_MASK           (1 << MB_MRAM)           // bit15
+#define OSPI0_MASK          (1 << MB_OSPI0)          // bit16
+#define OSPI1_MASK          (1 << MB_OSPI1)          // bit17
+#define SERAM_1_MASK        (1 << MB_SERAM_1)        // bit18
+#define SERAM_2_MASK        (1 << MB_SERAM_2)        // bit19
+#define FWRAM_MASK          (1 << MB_FWRAM)          // bit20
+#define BACKUP4K_MASK       (1 << MB_BACKUP4K)       // bit21
+#define SRAM0_1_RET_MASK    (1 << MB_SRAM0_1_RET)    // bit22
+#define SRAM0_2_RET_MASK    (1 << MB_SRAM0_2_RET)    // bit23
+#define SRAM0_3_RET_MASK    (1 << MB_SRAM0_3_RET)    // bit24
+#define SRAM0_4_RET_MASK    (1 << MB_SRAM0_4_RET)    // bit25
+#define SRAM1_RET_MASK      (1 << MB_SRAM1_RET)      // bit26
 
 #define SERAM_MASK      (SERAM_1_MASK | SERAM_2_MASK)
 
@@ -419,7 +423,7 @@ typedef enum {
  * @brief IP Clock gating items
  */
 typedef enum {
-    IP_CLOCK_NPU_HP,
+	IP_CLOCK_NPU_HP,
     IP_CLOCK_NPU_HE,
     IP_CLOCK_ISIM,
     IP_CLOCK_OSPI_1,
@@ -433,6 +437,7 @@ typedef enum {
     IP_CLOCK_MIPI_DSI,
     IP_CLOCK_MIPI_CSI,
     IP_CLOCK_LP_PERIPH
+
 } ip_clock_gating_t;
 
 #define NPU_HP_MASK       (1 << IP_CLOCK_NPU_HP)   // bit0
@@ -448,7 +453,6 @@ typedef enum {
 #define MIPI_DSI_MASK     (1 << IP_CLOCK_MIPI_DSI) // bit11
 #define MIPI_CSI_MASK     (1 << IP_CLOCK_MIPI_CSI) // bit12
 #define LP_PERIPH_MASK    (1 << IP_CLOCK_LP_PERIPH)// bit13
-
 
 /**
  * @enum phy_gating_t

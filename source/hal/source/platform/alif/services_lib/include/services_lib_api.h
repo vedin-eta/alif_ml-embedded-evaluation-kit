@@ -120,6 +120,7 @@ extern "C" {
 #define BL_TOC_IMAGE_DEVICE_MISMATCH                  0x20
 #define BL_ERROR_UPD_SIGNATURE_INCORRECT              0x21
 #define BL_ERROR_UPD_IMG_IN_MRAM_NOT_SUPPORTED        0x22
+#define BL_ERROR_HAVE_FAILED_ATOC_IMAGES              0x23
 
 /**
  * OTP Offsets
@@ -451,13 +452,15 @@ typedef enum {
  * @brief Clock frequency selectors
  */
 typedef enum {
-    CLOCK_SETTING_HFOSC_FREQ,  /**< CLOCK_SETTING_HFOSC_FREQ */
-    CLOCK_SETTING_EXTSYS0_FREQ,/**< CLOCK_SETTING_EXTSYS0_FREQ */
-    CLOCK_SETTING_EXTSYS1_FREQ,/**< CLOCK_SETTING_EXTSYS1_FREQ */
-    CLOCK_SETTING_AXI_FREQ,    /**< CLOCK_SETTING_AXI_FREQ */
-    CLOCK_SETTING_AHB_FREQ,    /**< CLOCK_SETTING_AHB_FREQ */
-    CLOCK_SETTING_APB_FREQ,    /**< CLOCK_SETTING_APB_FREQ */
-    CLOCK_SETTING_SYSREF_FREQ, /**< CLOCK_SETTING_SYSREF_FREQ */
+    CLOCK_SETTING_HFOSC_FREQ,       /**< CLOCK_SETTING_HFOSC_FREQ */
+    CLOCK_SETTING_EXTSYS0_FREQ,     /**< CLOCK_SETTING_EXTSYS0_FREQ */
+    CLOCK_SETTING_EXTSYS1_FREQ,     /**< CLOCK_SETTING_EXTSYS1_FREQ */
+    CLOCK_SETTING_AXI_FREQ,         /**< CLOCK_SETTING_AXI_FREQ */
+    CLOCK_SETTING_AHB_FREQ,         /**< CLOCK_SETTING_AHB_FREQ */
+    CLOCK_SETTING_APB_FREQ,         /**< CLOCK_SETTING_APB_FREQ */
+    CLOCK_SETTING_SYSREF_FREQ,      /**< CLOCK_SETTING_SYSREF_FREQ */
+    CLOCK_SETTING_ACLK_FORCE_EN,    /**< CLOCK_SETTING_ACLK_FORCE_EN */
+    CLOCK_SETTING_ACLK_ENTRY_DELAY, /**< CLOCK_SETTING_ACLK_ENTRY_DELAY */
 } clock_setting_t;
 
 /*******************************************************************************
@@ -797,10 +800,8 @@ uint32_t SERVICES_clocks_set_ES1_frequency(uint32_t services_handle, clock_frequ
 uint32_t SERVICES_clocks_select_a32_source(uint32_t services_handle, a32_source_t source, uint32_t *error_code);
 uint32_t SERVICES_clocks_select_aclk_source(uint32_t services_handle, aclk_source_t source, uint32_t *error_code);
 uint32_t SERVICES_clocks_set_divider(uint32_t services_handle, clock_divider_t divider, uint32_t value, uint32_t *error_code);
-uint32_t SERVICES_clocks_setting_get(uint32_t services_handle,
-                                     clock_setting_t setting_type,
-                                     uint32_t *value,
-                                     uint32_t *error_code);
+uint32_t SERVICES_clocks_setting_get(uint32_t services_handle, clock_setting_t setting_type, uint32_t *value, uint32_t *error_code);
+uint32_t SERVICES_clocks_set_aclk(uint32_t services_handle, uint32_t * aclk_entry_delay, uint32_t * aclk_force_en, uint32_t *error_code);
 
 // PLL services
 uint32_t SERVICES_pll_initialize(uint32_t services_handle, uint32_t *error_code);
