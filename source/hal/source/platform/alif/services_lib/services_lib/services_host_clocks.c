@@ -509,3 +509,21 @@ uint32_t SERVICES_clocks_setting_get(uint32_t services_handle,
   *error_code = p_svc->resp_error_code;
   return ret;
 }
+uint32_t SERVICES_clocks_set_aclk(uint32_t services_handle,
+                                  uint32_t *aclk_entry_delay,
+                                  uint32_t *aclk_force_en,
+                                  uint32_t *error_code)
+{
+  set_aclk_svc_t * p_svc =
+      (set_aclk_svc_t *)SERVICES_prepare_packet_buffer(sizeof(set_aclk_svc_t));
+
+  p_svc->send_aclk_entry_delay = *aclk_entry_delay;
+  p_svc->send_aclk_force_en = *aclk_force_en;
+
+  uint32_t ret = SERVICES_send_request(services_handle,
+		                               SERVICE_CLOCK_SET_ACLK_REQ_ID,
+                                       DEFAULT_TIMEOUT);
+
+  *error_code = p_svc->resp_error_code;
+  return ret;
+}

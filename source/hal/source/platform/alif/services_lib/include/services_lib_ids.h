@@ -172,6 +172,7 @@ enum SERVICE_ID_t {
   SERVICE_PLL_CLKPLL_IS_LOCKED,                                              /**< 715 (0x2CB) */
   SERVICE_CLOCK_GET_CLOCKS,                                                  /**< 716 (0x2CC) */
   SERVICE_CLOCK_SETTING_GET_REQ_ID,                                          /**< 717 (0x2CD) */
+  SERVICE_CLOCK_SET_ACLK_REQ_ID,                                             /**< 718 (0x2CE) */
   SERVICE_CLOCK_END                             = 799,                       /**< 799 (0x31F) */
 
   /**

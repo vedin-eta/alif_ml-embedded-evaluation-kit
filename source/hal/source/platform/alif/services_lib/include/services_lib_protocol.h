@@ -58,10 +58,10 @@ extern "C" {
  *  M A C R O   D E F I N E S
  ******************************************************************************/
 /* See SERVICES documentation for change log */
-#define SE_SERVICES_VERSION_STRING                 "0.50.7"
+#define SE_SERVICES_VERSION_STRING                 "0.50.9"
 #define SE_SERVICES_VERSION_MAJOR                  0
 #define SE_SERVICES_VERSION_MINOR                  50
-#define SE_SERVICES_VERSION_PATCH                  7
+#define SE_SERVICES_VERSION_PATCH                  9
 
 #define IMAGE_NAME_LENGTH                          8
 #define VERSION_RESPONSE_LENGTH                    80
@@ -956,6 +956,12 @@ typedef struct {
     volatile uint32_t resp_error_code;
 } clock_setting_svc_t;
 
+typedef struct {
+	service_header_t header;
+	uint32_t send_aclk_entry_delay;
+	uint32_t send_aclk_force_en;
+	uint32_t resp_error_code;
+} set_aclk_svc_t;
 /*******************************************************************************
  *  G L O B A L   D E F I N E S
  ******************************************************************************/
