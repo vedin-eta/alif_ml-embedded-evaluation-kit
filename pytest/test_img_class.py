@@ -13,4 +13,4 @@ from pytest_embedded import Dut
 
 def test_img_find_correct_classification(dut: Dut):
 
-    dut.expect('bassoon', timeout=5)
+    dut.expect('boxer', timeout=5)
