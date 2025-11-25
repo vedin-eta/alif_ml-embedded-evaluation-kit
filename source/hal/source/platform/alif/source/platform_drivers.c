@@ -334,14 +334,6 @@ int platform_init(void)
 
     se_err = (int)set_power_profiles();
 
-    // TODO: Remove when fixed in SE. Happens with SE 107. Hopefully fixed in SE 108.
-    // ========== START of FIX =========
-    volatile uint32_t* reg;
-    // Power ON SRAM0 & 1 and enable clocks for em
-    reg = (volatile uint32_t*)(0x1a60A000 + 0x4);
-    *reg &= ~((1U << 13) | (1U << 9));
-    *reg &= ~((1U << 12) | (1U << 8));
-    // ========== END of FIX =========
 #endif // SE_SERVICES_SUPPORT
 
     // CMSIS uses this handle in board_config.c as we don't use se_services_port.c we need to init it here. No matter if the SE_SERVICES_SUPPORT is defined.
