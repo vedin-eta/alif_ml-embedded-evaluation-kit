@@ -3426,7 +3426,7 @@
 //    <1=> ENABLE
 // <i> Defines DMA feature for UART2
 // <i> Default: DISABLE
-#define RTE_UART2_DMA_ENABLE   1
+#define RTE_UART2_DMA_ENABLE   0
 
 // <o> UART2 DMA IRQ priority <0-255>
 // <i> Defines UART2 DMA Interrupt priority
@@ -3553,7 +3553,7 @@
 //    <1=> ENABLE
 // <i> Defines DMA feature for UART4
 // <i> Default: DISABLE
-#define RTE_UART4_DMA_ENABLE   1
+#define RTE_UART4_DMA_ENABLE   0
 
 // <o> UART4 DMA Selection
 //    <0=> DMA1(M55-HP)
