@@ -117,4 +117,46 @@ char uart_getchar(void)
     return c;
 }
 
+int uart_receive_bulk(uint8_t* buffer, uint32_t len)
+{
+    if (!initialized || !buffer || len == 0) {
+        return -1;
+    }
+
+    uart_event = 0;
+    int32_t ret = USARTdrv->Receive(buffer, len);
+    if (ret != ARM_DRIVER_OK) {
+        return ret;
+    }
+
+    /* Wait for receive complete event with WFE for power efficiency */
+    while (!uart_event) {
+        __WFE();
+    }
+
+    /* Check if receive completed successfully */
+    if (uart_event & ARM_USART_EVENT_RECEIVE_COMPLETE) {
+        return 0;  /* Success */
+    }
+
+    /* Check for errors */
+    if (uart_event & ARM_USART_EVENT_RX_OVERFLOW) {
+        return -2;  /* Overflow error */
+    }
+    if (uart_event & ARM_USART_EVENT_RX_TIMEOUT) {
+        return -3;  /* Timeout error */
+    }
+    if (uart_event & ARM_USART_EVENT_RX_BREAK) {
+        return -4;  /* Break error */
+    }
+    if (uart_event & ARM_USART_EVENT_RX_FRAMING_ERROR) {
+        return -5;  /* Framing error */
+    }
+    if (uart_event & ARM_USART_EVENT_RX_PARITY_ERROR) {
+        return -6;  /* Parity error */
+    }
+
+    return -7;  /* Unknown error */
+}
+
 /************************ (C) COPYRIGHT ALIF SEMICONDUCTOR *****END OF FILE****/

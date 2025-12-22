@@ -22,6 +22,12 @@
 #include "log_macros.h"             /* Logging functions */
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
 
+extern "C" {
+#include "uart_tracelib.h"          /* UART communication functions */
+}
+
+#include <cstring>                  /* For memcpy */
+
 namespace arm {
 namespace app {
     static uint8_t tensorArena[ACTIVATION_BUF_SZ] ACTIVATION_BUF_ATTRIBUTE;
@@ -48,6 +54,111 @@ extern uint8_t* GetModelPointer();
 extern size_t GetModelLen();
 
 #endif /* defined(DYNAMIC_MODEL_BASE) && defined(DYNAMIC_MODEL_SIZE) */
+
+/**
+ * @brief Wait for user to send 'y' or 'n' to decide whether to load input from UART
+ * @return true if user wants to load input from UART, false otherwise
+ */
+static bool WaitForInputChoice()
+{
+    info("\n=== Input Data Selection ===\n");
+    info("Load input tensor data from UART? (y/n): ");
+
+    while (true) {
+        char c = uart_getchar();
+
+        if (c == 'y' || c == 'Y') {
+            info("Y\n");
+            return true;
+        } else if (c == 'n' || c == 'N') {
+            info("N\n");
+            return false;
+        }
+        // Ignore other characters and wait for valid input
+    }
+}
+
+/**
+ * @brief Load model input tensor from UART using optimized bulk transfer
+ * @param model Reference to the model
+ */
+static void LoadInputFromUART(const arm::app::Model& model)
+{
+    const size_t numInputs = model.GetNumInputs();
+
+    info("\n=== Loading Input from UART ===\n");
+    info("Number of input tensors: %zu\n", numInputs);
+
+    for (size_t inputIndex = 0; inputIndex < numInputs; inputIndex++) {
+        TfLiteTensor* inputTensor = model.GetInputTensor(inputIndex);
+
+        if (!inputTensor || inputTensor->bytes == 0) {
+            printf_err("Invalid input tensor at index %zu\n", inputIndex);
+            continue;
+        }
+
+        info("\nInput tensor %zu:\n", inputIndex);
+        info("  Size: %zu bytes (%.2f KB)\n",
+             inputTensor->bytes,
+             inputTensor->bytes / 1024.0f);
+        info("  Type: ");
+        switch (inputTensor->type) {
+            case kTfLiteInt8:   info("int8\n");   break;
+            case kTfLiteUInt8:  info("uint8\n");  break;
+            case kTfLiteInt16:  info("int16\n");  break;
+            case kTfLiteFloat32: info("float32\n"); break;
+            default:            info("other (%d)\n", inputTensor->type); break;
+        }
+
+        info("\nReady to receive %zu bytes...\n", inputTensor->bytes);
+        info("Start sending data from host PC now!\n");
+
+        uint8_t* destPtr = reinterpret_cast<uint8_t*>(inputTensor->data.data);
+        uint32_t bytesRemaining = inputTensor->bytes;
+        uint32_t totalRead = 0;
+
+        // Use optimized bulk transfer with chunking for progress display
+        // and to handle potential UART buffer limitations
+        const uint32_t CHUNK_SIZE = 4096;  // 4KB chunks for good performance
+
+        while (bytesRemaining > 0) {
+            uint32_t chunkSize = (bytesRemaining > CHUNK_SIZE) ? CHUNK_SIZE : bytesRemaining;
+
+            // Perform bulk UART receive for this chunk
+            int result = uart_receive_bulk(destPtr + totalRead, chunkSize);
+
+            if (result != 0) {
+                printf_err("\nUART receive error: %d\n", result);
+                printf_err("Received %u / %u bytes before error\n",
+                          totalRead, inputTensor->bytes);
+
+                switch (result) {
+                    case -2: printf_err("RX Overflow error\n"); break;
+                    case -3: printf_err("RX Timeout error\n"); break;
+                    case -4: printf_err("RX Break error\n"); break;
+                    case -5: printf_err("RX Framing error\n"); break;
+                    case -6: printf_err("RX Parity error\n"); break;
+                    default: printf_err("Unknown error\n"); break;
+                }
+                return;
+            }
+
+            totalRead += chunkSize;
+            bytesRemaining -= chunkSize;
+
+            // Print progress
+            float progress = (100.0f * totalRead) / inputTensor->bytes;
+            info("  Progress: %u / %u bytes (%.1f%%)%s\r",
+                 totalRead, inputTensor->bytes, progress,
+                 (bytesRemaining == 0) ? "\n" : "");
+        }
+
+        info("Input tensor %zu loaded successfully!\n", inputIndex);
+    }
+
+    info("\n=== All input tensors loaded ===\n\n");
+}
+
     }  /* namespace inference_runner */
 } /* namespace app */
 } /* namespace arm */
@@ -72,10 +183,43 @@ void MainLoop()
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
     caseContext.Set<arm::app::Model&>("model", model);
 
-    /* Loop. */
-    if (RunInferenceHandler(caseContext)) {
-        info("Inference completed.\n");
-    } else {
-        printf_err("Inference failed.\n");
+    /* Main loop - run inference with optional UART input */
+    while (true) {
+        info("\n");
+        info("========================================\n");
+        info("  Inference Runner - Ready\n");
+        info("========================================\n");
+
+        /* Ask user if they want to load input from UART */
+        bool loadFromUART = arm::app::inference_runner::WaitForInputChoice();
+
+        if (loadFromUART) {
+            /* Load input tensor data from UART */
+            arm::app::inference_runner::LoadInputFromUART(model);
+        } else {
+            info("Using default/random input data (from PopulateInputTensor)\n");
+        }
+
+        /* Run inference */
+        info("\n--- Starting Inference ---\n");
+        if (arm::app::RunInferenceHandler(caseContext)) {
+            info("--- Inference completed successfully ---\n");
+        } else {
+            printf_err("--- Inference failed ---\n");
+        }
+
+        /* Ask if user wants to run another inference */
+        info("\nRun another inference? (y/n): ");
+        while (true) {
+            char c = uart_getchar();
+            if (c == 'y' || c == 'Y') {
+                info("Y\n");
+                break;  /* Continue to next iteration */
+            } else if (c == 'n' || c == 'N') {
+                info("N\n");
+                info("\nExiting inference runner.\n");
+                return;
+            }
+        }
     }
 }

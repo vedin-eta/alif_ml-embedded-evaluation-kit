@@ -23,6 +23,14 @@ int uart_send(const char* str, uint32_t len);
 
 char uart_getchar(void);
 
+/**
+ * @brief Receive bulk data from UART (blocking, optimized for large transfers)
+ * @param buffer Pointer to buffer to store received data
+ * @param len Number of bytes to receive
+ * @return 0 on success, negative on error
+ */
+int uart_receive_bulk(uint8_t* buffer, uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif
