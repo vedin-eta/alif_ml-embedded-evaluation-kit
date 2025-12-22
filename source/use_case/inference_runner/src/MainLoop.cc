@@ -62,16 +62,17 @@ extern size_t GetModelLen();
 static bool WaitForInputChoice()
 {
     info("\n=== Input Data Selection ===\n");
-    info("Load input tensor data from UART? (y/n): ");
+    printf("Load input tensor data from UART? (y/n): ");
+    fflush(stdout);  // Force output to display immediately
 
     while (true) {
         char c = uart_getchar();
 
         if (c == 'y' || c == 'Y') {
-            info("Y\n");
+            printf("Y\n");
             return true;
         } else if (c == 'n' || c == 'N') {
-            info("N\n");
+            printf("N\n");
             return false;
         }
         // Ignore other characters and wait for valid input
@@ -209,14 +210,15 @@ void MainLoop()
         }
 
         /* Ask if user wants to run another inference */
-        info("\nRun another inference? (y/n): ");
+        printf("\nRun another inference? (y/n): ");
+        fflush(stdout);  // Force output to display immediately
         while (true) {
             char c = uart_getchar();
             if (c == 'y' || c == 'Y') {
-                info("Y\n");
+                printf("Y\n");
                 break;  /* Continue to next iteration */
             } else if (c == 'n' || c == 'N') {
-                info("N\n");
+                printf("N\n");
                 info("\nExiting inference runner.\n");
                 return;
             }
