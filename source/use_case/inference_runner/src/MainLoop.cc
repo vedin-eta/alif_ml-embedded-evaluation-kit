@@ -24,6 +24,8 @@
 
 extern "C" {
 #include "uart_tracelib.h"          /* UART communication functions */
+#include "inference_timing.h"       /* GPIO timing signals */
+#include "delay.h"                  /* Accurate delay functions */
 }
 
 #include <cstring>                  /* For memcpy */
@@ -177,6 +179,13 @@ void MainLoop()
         return;
     }
 
+    /* Initialize GPIO timing pins */
+    if (inference_timing_init() == 0) {
+        info("GPIO timing pins initialized (P1_4=pre, P1_5=post)\n");
+    } else {
+        printf_err("Warning: Failed to initialize GPIO timing pins\n");
+    }
+
     /* Instantiate application context. */
     arm::app::ApplicationContext caseContext;
 
@@ -201,9 +210,23 @@ void MainLoop()
             info("Using default/random input data (from PopulateInputTensor)\n");
         }
 
-        /* Run inference */
+        /* Run inference with GPIO timing signals */
         info("\n--- Starting Inference ---\n");
-        if (arm::app::RunInferenceHandler(caseContext)) {
+
+        /* Set pre-inference GPIO high for 50ms */
+        inference_timing_pre_start();
+        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
+        inference_timing_pre_end();
+
+        /* Run the inference */
+        bool inference_success = arm::app::RunInferenceHandler(caseContext);
+
+        /* Set post-inference GPIO high for 50ms */
+        inference_timing_post_start();
+        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
+        inference_timing_post_end();
+
+        if (inference_success) {
             info("--- Inference completed successfully ---\n");
         } else {
             printf_err("--- Inference failed ---\n");

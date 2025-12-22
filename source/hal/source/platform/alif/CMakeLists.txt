@@ -143,6 +143,7 @@ target_sources(${PLATFORM_DRIVERS_CORE}
     source/tracelib.c
     source/retarget_alif.c
     source/delay.c
+    source/inference_timing.c
     $<$<BOOL:${OSPI_FLASH_SUPPORT}>:source/ospi_flash_is25wx.c>
     $<$<BOOL:${OSPI_FLASH_SUPPORT}>:source/MX66UM2G.c>
     $<$<BOOL:${OSPI_FLASH_SUPPORT}>:source/ospi_flash_mx66um2g.c>
