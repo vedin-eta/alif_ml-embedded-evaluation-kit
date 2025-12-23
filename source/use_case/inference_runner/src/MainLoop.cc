@@ -232,19 +232,6 @@ void MainLoop()
             printf_err("--- Inference failed ---\n");
         }
 
-        /* Ask if user wants to run another inference */
-        printf("\nRun another inference? (y/n): ");
-        fflush(stdout);  // Force output to display immediately
-        while (true) {
-            char c = uart_getchar();
-            if (c == 'y' || c == 'Y') {
-                printf("Y\n");
-                break;  /* Continue to next iteration */
-            } else if (c == 'n' || c == 'N') {
-                printf("N\n");
-                info("\nExiting inference runner.\n");
-                return;
-            }
-        }
+        while (true) {}
     }
 }

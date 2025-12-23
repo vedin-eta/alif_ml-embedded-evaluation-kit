@@ -22,6 +22,10 @@ USER_OPTION(${use_case}_ACTIVATION_BUF_SZ "Activation buffer size for the chosen
     0x00200000
     STRING)
 
+USER_OPTION(${use_case}_MODEL_IN_EXT_FLASH "Run model from external flash"
+        OFF
+        BOOL)
+
 if (ETHOS_U_NPU_ENABLED)
     set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/dnn_s_quantized_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
 else()

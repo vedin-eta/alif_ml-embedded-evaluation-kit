@@ -109,7 +109,9 @@ static void DumpOutputs(const Model& model, const char* message)
 {
     info("%s\n", message);
     for (size_t outputIndex = 0; outputIndex < model.GetNumOutputs(); outputIndex++) {
+        info("output %lu", outputIndex);
         arm::app::DumpTensor(model.GetOutputTensor(outputIndex));
+        info("output %lu dumped\n", outputIndex);
     }
 }
 #endif /* VERIFY_TEST_OUTPUT */
