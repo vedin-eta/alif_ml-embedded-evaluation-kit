@@ -219,7 +219,7 @@ void MainLoop()
         inference_timing_pre_end();
 
         /* Run the inference */
-        bool inference_success = arm::app::RunInferenceHandler(caseContext);
+        bool inference_success = arm::app::RunInferenceHandler(caseContext, true);
 
         /* Set post-inference GPIO high for 50ms */
         inference_timing_post_start();

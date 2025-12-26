@@ -116,7 +116,7 @@ static void DumpOutputs(const Model& model, const char* message)
 }
 #endif /* VERIFY_TEST_OUTPUT */
 
-bool RunInferenceHandler(ApplicationContext& ctx)
+bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
 {
     auto& profiler = ctx.Get<Profiler&>("profiler");
     auto& model = ctx.Get<Model&>("model");
@@ -129,16 +129,8 @@ bool RunInferenceHandler(ApplicationContext& ctx)
         return false;
     }
 
-#if VERIFY_TEST_OUTPUT
-    DumpInputs(model, "Initial input tensors values");
-    DumpOutputs(model, "Initial output tensors values");
-#endif /* VERIFY_TEST_OUTPUT */
-
-    PopulateInputTensor(model);
-
-#if VERIFY_TEST_OUTPUT
-    DumpInputs(model, "input tensors populated");
-#endif /* VERIFY_TEST_OUTPUT */
+    if (!inputs_populated)
+        PopulateInputTensor(model);
 
     /* Strings for presentation/logging. */
     std::string str_inf{"Running inference... "};

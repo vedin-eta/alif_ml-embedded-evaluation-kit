@@ -25,9 +25,10 @@ namespace app {
     /**
      * @brief       Handles the inference event.
      * @param[in]   ctx   Pointer to the application context.
+     * @param[in]   inputs_populated    Indicated whether the inputs were already populated before the function call
      * @return      true or false based on execution success.
      **/
-    bool RunInferenceHandler(ApplicationContext& ctx);
+    bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated);
 
 } /* namespace app */
 } /* namespace arm */
