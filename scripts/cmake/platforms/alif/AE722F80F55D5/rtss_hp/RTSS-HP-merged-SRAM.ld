@@ -38,7 +38,7 @@ MEMORY
 {
   ITCM  (rwx) : ORIGIN = 0x01000000, LENGTH = 0x00040000
   DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00100000
-  SRAM  (rwx) : ORIGIN = 0x30000000, LENGTH = 0x00680000 // Combined SRAM0+1 view from custom system package
+  SRAM  (rwx) : ORIGIN = 0x02000000, LENGTH = 0x00680000 // Combined SRAM0+1 view from custom system package
   MRAM  (rx)  : ORIGIN = __ROM_BASE, LENGTH = __ROM_SIZE
   OSPI_FLASH (rx) : ORIGIN = __OSPI_FLASH_BASE, LENGTH = __OSPI_FLASH_SIZE
 }
@@ -49,36 +49,15 @@ SECTIONS
 {
   .startup.at_mram : ALIGN(16)
   {
-    /* MRAM has start-up code, and most constant data */
+    /* MRAM has all read-only code and data except fast LVGL code and some maths tables
+     * This memory layout is a safe default for high-memory builds like the inference runner
+     * where the usual attempts to put inference code into ITCM dont fit
+     */
     /* Only more-specific stuff here. General wildcards in
      * a later-declared section, giving a chance for other
      * regions to get in before-hand
      */
     KEEP(*(.vectors))
-
-    *startup*.c.obj(.text* .rodata*)
-    *system*.c.obj(.text* .rodata*)
-    *mpu*.c.obj(.text* .rodata*)
-    *tgu.c.obj(.text* .rodata*)
-    *vectors.c.obj(.text* .rodata*)
-    *sau_tcm_ns_setup*(.text* .rodata*)
-    *Main.cc.obj(.text .rodata*)
-    *platform_drivers.c.obj(.text .rodata*)
-    *fault_handler.c.obj(.text* .rodata*)
-
-    *liblvgl.a:*(.text .rodata*)
-    *libArm-2D.a:*(.text* .rodata*)
-    *libcmsis_device.a:*(.text* .rodata*)
-    *libalif_se_services.a:*(.text* .rodata*)
-    *liblcd_*.a:*(.text* .rodata*)
-    *libimage_*.a:*(.text* .rodata*)
-    *libcommon_api.a:*(.text* .rodata*)
-    *libalif_ui_api.a:*(.text* .rodata*)
-    *libg.a:*printf*(.text* .rodata*)
-    *libstdc++.a:cp-demangle.o(.text* .rodata*)
-    *libtensorflow-microlite.a:arm_*_s4.o(.text* .rodata*)
-    *libtensorflow-microlite.a:arm_*_s16.o(.text* .rodata*)
-
     *(startup_ro_data)
   } > MRAM
 
@@ -116,8 +95,7 @@ SECTIONS
 
   .text.itcm.at_mram : ALIGN(8)
   {
-    /* ITCM has non-startup code, CMSIS-DSP tables, audio record buffer and RAM vectors */
-    *(.text*)
+    /* ITCM left mostly empty for inference_runner - only fast code if needed */
     *(fast_code)
   } > ITCM AT> MRAM
 
@@ -130,14 +108,6 @@ SECTIONS
     *arm_common_tables.c.obj(.data* .rodata*)
 
     KEEP(*(.jcr*))
-
-    . = ALIGN(8);
-    *(.ARM.extab* .gnu.linkonce.armextab.*)
-    . = ALIGN(8);
-    __exidx_start = .;
-    *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-    __exidx_end = .;
-
   } > DTCM AT> MRAM
 
   /* Place non-zero code/data here if required in SRAM0 */
@@ -226,6 +196,15 @@ SECTIONS
     *(SORT(.dtors.*))
     *(.dtors)
 
+    . = ALIGN(8);
+    *(.ARM.extab* .gnu.linkonce.armextab.*)
+    . = ALIGN(8);
+    __exidx_start = .;
+    *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+    __exidx_end = .;
+
+    . = ALIGN(4);
+    *(.text*)
     *(.rodata*)
 
     *(nn_model)
