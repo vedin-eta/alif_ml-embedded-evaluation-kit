@@ -181,7 +181,7 @@ void MainLoop()
 
     /* Initialize GPIO timing pins */
     if (inference_timing_init() == 0) {
-        info("GPIO timing pins initialized (P1_4=pre, P1_5=post)\n");
+        info("GPIO timing pins initialized (P0_0=pre, P0_1=post)\n");
     } else {
         printf_err("Warning: Failed to initialize GPIO timing pins\n");
     }

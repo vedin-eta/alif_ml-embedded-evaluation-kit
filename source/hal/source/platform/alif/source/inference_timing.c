@@ -25,16 +25,17 @@
 #include "RTE_Components.h"
 #include CMSIS_device_header
 
+#include <stdio.h>
+
 /* GPIO pins for timing measurement on DevKit E7
- * P1_4 (GPIO1 PIN4) - Pre-inference signal
- * P1_5 (GPIO1 PIN5) - Post-inference signal
+ * P0_0 (GPIO0 PIN0) - Pre-inference signal
+ * P0_1 (GPIO0 PIN1) - Post-inference signal
  * These pins are configured as GPIO outputs in pins.h
  */
-#define PRE_INFERENCE_GPIO_PORT    1
-#define PRE_INFERENCE_GPIO_PIN     4
-
-#define POST_INFERENCE_GPIO_PORT   1
-#define POST_INFERENCE_GPIO_PIN    5
+#define PRE_INFERENCE_GPIO_PORT    0
+#define PRE_INFERENCE_GPIO_PIN     0
+#define POST_INFERENCE_GPIO_PORT   0
+#define POST_INFERENCE_GPIO_PIN    1
 
 /* GPIO Driver instances */
 extern ARM_DRIVER_GPIO ARM_Driver_GPIO_(PRE_INFERENCE_GPIO_PORT);
@@ -92,6 +93,7 @@ int inference_timing_init(void)
 void inference_timing_pre_start(void)
 {
     if (initialized) {
+        printf("Setting pre-inference pin high.\n");
         gpio_pre->SetValue(PRE_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_HIGH);
     }
 }
@@ -99,6 +101,7 @@ void inference_timing_pre_start(void)
 void inference_timing_pre_end(void)
 {
     if (initialized) {
+        printf("Setting pre-inference pin low.\n");
         gpio_pre->SetValue(PRE_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_LOW);
     }
 }
@@ -106,6 +109,7 @@ void inference_timing_pre_end(void)
 void inference_timing_post_start(void)
 {
     if (initialized) {
+        printf("Setting post-inference pin high.\n");
         gpio_post->SetValue(POST_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_HIGH);
     }
 }
@@ -113,6 +117,7 @@ void inference_timing_post_start(void)
 void inference_timing_post_end(void)
 {
     if (initialized) {
+        printf("Setting post-inference pin low.\n");
         gpio_post->SetValue(POST_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_LOW);
     }
 }
