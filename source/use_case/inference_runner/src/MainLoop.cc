@@ -76,6 +76,11 @@ static bool WaitForInputChoice()
         } else if (c == 'n' || c == 'N') {
             printf("N\n");
             return false;
+        } else if (c == 'g' || c == 'G') {
+            printf("G - Triggering special GPIO routine\n");
+            inference_timing_cycle_routine();
+            printf("Load input tensor data from UART? (y/n): ");
+            fflush(stdout);
         }
         // Ignore other characters and wait for valid input
     }
@@ -186,6 +191,13 @@ void MainLoop()
         printf_err("Warning: Failed to initialize GPIO timing pins\n");
     }
 
+    /* Initialize special GPIO pins for 'g' routine */
+    if (inference_timing_special_init() == 0) {
+        info("Special GPIO pins initialized (P0_0, P0_1, P0_2, P0_4)\n");
+    } else {
+        printf_err("Warning: Failed to initialize special GPIO pins\n");
+    }
+
     /* Instantiate application context. */
     arm::app::ApplicationContext caseContext;
 
@@ -232,6 +244,14 @@ void MainLoop()
             printf_err("--- Inference failed ---\n");
         }
 
-        while (true) {}
+        info("Inference finished. Press 'g' for special GPIO routine or any other key to stay in loop.\n");
+        while (true) {
+            char c = uart_getchar();
+            if (c == 'g' || c == 'G') {
+                printf("G - Triggering special GPIO routine\n");
+                inference_timing_cycle_routine();
+                info("Press 'g' for special GPIO routine or any other key to stay in loop.\n");
+            }
+        }
     }
 }

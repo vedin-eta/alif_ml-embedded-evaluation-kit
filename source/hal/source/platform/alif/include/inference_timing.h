@@ -24,6 +24,17 @@ extern "C" {
 int inference_timing_init(void);
 
 /**
+ * @brief Initialize GPIO pins P0_0, P0_1, P0_2, and P0_4 as outputs and set low
+ * @return 0 on success, negative on error
+ */
+int inference_timing_special_init(void);
+
+/**
+ * @brief Cycle through P0_0, P0_1, P0_2, and P0_4, setting each high for 1 second
+ */
+void inference_timing_cycle_routine(void);
+
+/**
  * @brief Set pre-inference GPIO pin high
  */
 void inference_timing_pre_start(void);
