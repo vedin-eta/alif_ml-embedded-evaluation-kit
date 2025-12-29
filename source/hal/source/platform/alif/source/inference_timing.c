@@ -34,7 +34,7 @@
  * These pins are configured as GPIO outputs in pins.h
  */
 #define PRE_INFERENCE_GPIO_PORT    0
-#define PRE_INFERENCE_GPIO_PIN     0
+#define PRE_INFERENCE_GPIO_PIN     2
 #define POST_INFERENCE_GPIO_PORT   0
 #define POST_INFERENCE_GPIO_PIN    1
 

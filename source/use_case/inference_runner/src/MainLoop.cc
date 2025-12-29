@@ -155,10 +155,10 @@ static void LoadInputFromUART(const arm::app::Model& model)
             bytesRemaining -= chunkSize;
 
             // Print progress
-            float progress = (100.0f * totalRead) / inputTensor->bytes;
+            /*float progress = (100.0f * totalRead) / inputTensor->bytes;
             info("  Progress: %u / %u bytes (%.1f%%)%s\r",
                  totalRead, inputTensor->bytes, progress,
-                 (bytesRemaining == 0) ? "\n" : "");
+                 (bytesRemaining == 0) ? "\n" : "");*/
         }
 
         info("Input tensor %zu loaded successfully!\n", inputIndex);
