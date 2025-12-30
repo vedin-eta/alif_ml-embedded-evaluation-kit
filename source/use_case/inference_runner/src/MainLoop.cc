@@ -225,18 +225,8 @@ void MainLoop()
         /* Run inference with GPIO timing signals */
         info("\n--- Starting Inference ---\n");
 
-        /* Set pre-inference GPIO high for 50ms */
-        inference_timing_pre_start();
-        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
-        inference_timing_pre_end();
-
         /* Run the inference */
         bool inference_success = arm::app::RunInferenceHandler(caseContext, true);
-
-        /* Set post-inference GPIO high for 50ms */
-        inference_timing_post_start();
-        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
-        inference_timing_post_end();
 
         if (inference_success) {
             info("--- Inference completed successfully ---\n");

@@ -25,6 +25,7 @@
 #include "RTE_Components.h"
 #include CMSIS_device_header
 #include "delay.h"
+#include "pinconf.h"
 
 #include <stdio.h>
 
@@ -34,7 +35,7 @@
  * These pins are configured as GPIO outputs in pins.h
  */
 #define PRE_INFERENCE_GPIO_PORT    0
-#define PRE_INFERENCE_GPIO_PIN     2
+#define PRE_INFERENCE_GPIO_PIN     0
 #define POST_INFERENCE_GPIO_PORT   0
 #define POST_INFERENCE_GPIO_PIN    1
 
@@ -53,9 +54,15 @@ static ARM_DRIVER_GPIO *gpio0 = &ARM_Driver_GPIO_(0);
 static bool initialized = false;
 static bool special_initialized = false;
 
-static int32_t init_pin_output(ARM_DRIVER_GPIO* driver, uint8_t pin)
+static int32_t init_pin_output(ARM_DRIVER_GPIO* driver, uint8_t port, uint8_t pin)
 {
     int32_t ret;
+
+    /* Configure pin as GPIO with push-pull output */
+    ret = pinconf_set(port, pin, PINMUX_ALTERNATE_FUNCTION_0,
+                      PADCTRL_OUTPUT_DRIVE_STRENGTH_4MA);
+    if (ret != 0) return ret;
+
     ret = driver->Initialize(pin, NULL);
     if (ret != ARM_DRIVER_OK) return ret;
 
@@ -71,8 +78,8 @@ static int32_t init_pin_output(ARM_DRIVER_GPIO* driver, uint8_t pin)
 
 int inference_timing_init(void)
 {
-    if (init_pin_output(gpio0, PRE_INFERENCE_GPIO_PIN) != ARM_DRIVER_OK) return -1;
-    if (init_pin_output(gpio0, POST_INFERENCE_GPIO_PIN) != ARM_DRIVER_OK) return -2;
+    if (init_pin_output(gpio0, PRE_INFERENCE_GPIO_PORT, PRE_INFERENCE_GPIO_PIN) != ARM_DRIVER_OK) return -1;
+    if (init_pin_output(gpio0, POST_INFERENCE_GPIO_PORT, POST_INFERENCE_GPIO_PIN) != ARM_DRIVER_OK) return -2;
 
     initialized = true;
     return 0;
@@ -80,10 +87,10 @@ int inference_timing_init(void)
 
 int inference_timing_special_init(void)
 {
-    if (init_pin_output(gpio0, SPECIAL_PIN_0) != ARM_DRIVER_OK) return -1;
-    if (init_pin_output(gpio0, SPECIAL_PIN_1) != ARM_DRIVER_OK) return -2;
-    if (init_pin_output(gpio0, SPECIAL_PIN_2) != ARM_DRIVER_OK) return -3;
-    if (init_pin_output(gpio0, SPECIAL_PIN_4) != ARM_DRIVER_OK) return -4;
+    if (init_pin_output(gpio0, SPECIAL_GPIO_PORT, SPECIAL_PIN_0) != ARM_DRIVER_OK) return -1;
+    if (init_pin_output(gpio0, SPECIAL_GPIO_PORT, SPECIAL_PIN_1) != ARM_DRIVER_OK) return -2;
+    if (init_pin_output(gpio0, SPECIAL_GPIO_PORT, SPECIAL_PIN_2) != ARM_DRIVER_OK) return -3;
+    if (init_pin_output(gpio0, SPECIAL_GPIO_PORT, SPECIAL_PIN_4) != ARM_DRIVER_OK) return -4;
 
     special_initialized = true;
     return 0;

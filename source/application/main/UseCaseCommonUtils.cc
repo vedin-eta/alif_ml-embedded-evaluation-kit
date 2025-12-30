@@ -21,6 +21,11 @@
 
 #include <cinttypes>
 
+extern "C" {
+#include "inference_timing.h"       /* GPIO timing signals */
+#include "delay.h"                  /* Accurate delay functions */
+}
+
 namespace arm {
 namespace app {
     bool PresentInferenceResult(const std::vector<arm::app::ClassificationResult>& results)
@@ -67,10 +72,22 @@ namespace app {
 
     bool RunInference(arm::app::Model& model, Profiler& profiler)
     {
-        profiler.StartProfiling("Inference");
-        bool runInf = model.RunInference();
-        profiler.StopProfiling();
+        /* Set pre-inference GPIO high for 50ms */
+        inference_timing_pre_start();
+        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
+        inference_timing_pre_end();
 
+        bool runInf = model.RunInference();
+
+        /* Set post-inference GPIO high for 50ms */
+        inference_timing_post_start();
+        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
+        inference_timing_post_end();
+        if (!runInf) return runInf;
+
+        profiler.StartProfiling("Inference");
+        runInf = model.RunInference();
+        profiler.StopProfiling();
         return runInf;
     }
 
