@@ -40,7 +40,7 @@ namespace app {
      * @param[in]       profiler   Reference to the initialised profiler.
      * @return          true if inference succeeds, false otherwise.
      **/
-    bool RunInference(Model& model, Profiler& profiler);
+    bool RunInference(Model& model, Profiler& profiler, bool profile = true);
 
     /**
      * @brief           Read input and return as an integer.

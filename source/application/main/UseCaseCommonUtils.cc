@@ -70,24 +70,26 @@ namespace app {
         return true;
     }
 
-    bool RunInference(arm::app::Model& model, Profiler& profiler)
+    bool RunInference(arm::app::Model& model, Profiler& profiler, bool profile)
     {
         /* Set pre-inference GPIO high for 50ms */
-        inference_timing_pre_start();
-        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
-        inference_timing_pre_end();
+        if (!profile) {
+            inference_timing_pre_start();
+            sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
+            inference_timing_pre_end();
+        }
 
+        if (profile) profiler.StartProfiling("Inference");
         bool runInf = model.RunInference();
+        if (profile) profiler.StopProfiling();
 
         /* Set post-inference GPIO high for 50ms */
-        inference_timing_post_start();
-        sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
-        inference_timing_post_end();
-        if (!runInf) return runInf;
+        if (!profile) {
+            inference_timing_post_start();
+            sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
+            inference_timing_post_end();
+        }
 
-        profiler.StartProfiling("Inference");
-        runInf = model.RunInference();
-        profiler.StopProfiling();
         return runInf;
     }
 

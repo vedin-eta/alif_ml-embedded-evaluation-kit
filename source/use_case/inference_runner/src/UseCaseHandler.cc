@@ -139,7 +139,7 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
     hal_lcd_display_text(str_inf.c_str(), str_inf.size(),
                          dataPsnTxtInfStartX, dataPsnTxtInfStartY, 0);
 
-    if (!RunInference(model, profiler)) {
+    if (!RunInference(model, profiler, true)) {
         return false;
     }
 
@@ -157,6 +157,8 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
     DumpOutputs(model, "output tensors post inference");
 #endif /* VERIFY_TEST_OUTPUT */
 
+    // second run for energy measurement, no profiling
+    RunInference(model, profiler, false);
 #if defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE)
     PopulateDynamicOfm(model);
 #endif /* defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE) */
