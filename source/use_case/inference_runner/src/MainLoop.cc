@@ -173,18 +173,7 @@ static void LoadInputFromUART(const arm::app::Model& model)
 
 void MainLoop()
 {
-    arm::app::TestModel model;  /* Model wrapper object. */
-
-    /* Load the model. */
-    if (!model.Init(arm::app::tensorArena,
-                    sizeof(arm::app::tensorArena),
-                    arm::app::inference_runner::GetModelPointer(),
-                    arm::app::inference_runner::GetModelLen())) {
-        printf_err("Failed to initialise model\n");
-        return;
-    }
-
-    /* Initialize GPIO timing pins */
+    /* Initialize GPIO timing pins first - regardless of model init success */
     if (inference_timing_init() == 0) {
         info("GPIO timing pins initialized (P0_0=pre, P0_1=post)\n");
     } else {
@@ -198,49 +187,73 @@ void MainLoop()
         printf_err("Warning: Failed to initialize special GPIO pins\n");
     }
 
-    /* Instantiate application context. */
-    arm::app::ApplicationContext caseContext;
+    arm::app::TestModel model;  /* Model wrapper object. */
+    bool model_initialized = false;
 
+    /* Try to load the model */
+    if (!model.Init(arm::app::tensorArena,
+                    sizeof(arm::app::tensorArena),
+                    arm::app::inference_runner::GetModelPointer(),
+                    arm::app::inference_runner::GetModelLen())) {
+        printf_err("Failed to initialise model\n");
+        printf_err("Model inference will not be available, but GPIO test routine is accessible.\n");
+    } else {
+        model_initialized = true;
+        info("Model initialized successfully\n");
+    }
+
+    /* Instantiate application context */
+    arm::app::ApplicationContext caseContext;
     arm::app::Profiler profiler{"inference_runner"};
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
     caseContext.Set<arm::app::Model&>("model", model);
 
-    /* Main loop - run inference with optional UART input */
+    /* Main loop - always accessible regardless of model init status */
     while (true) {
         info("\n");
         info("========================================\n");
         info("  Inference Runner - Ready\n");
+        if (!model_initialized) {
+            info("  (Model Init Failed - GPIO test only)\n");
+        }
         info("========================================\n");
 
-        /* Ask user if they want to load input from UART */
-        bool loadFromUART = arm::app::inference_runner::WaitForInputChoice();
+        if (model_initialized) {
+            /* Ask user if they want to load input from UART */
+            bool loadFromUART = arm::app::inference_runner::WaitForInputChoice();
 
-        if (loadFromUART) {
-            /* Load input tensor data from UART */
-            arm::app::inference_runner::LoadInputFromUART(model);
+            if (loadFromUART) {
+                /* Load input tensor data from UART */
+                arm::app::inference_runner::LoadInputFromUART(model);
+            } else {
+                info("Using default/random input data (from PopulateInputTensor)\n");
+            }
+
+            /* Run inference with GPIO timing signals */
+            info("\n--- Starting Inference ---\n");
+
+            /* Run the inference */
+            bool inference_success = arm::app::RunInferenceHandler(caseContext, true);
+
+            if (inference_success) {
+                info("--- Inference completed successfully ---\n");
+            } else {
+                printf_err("--- Inference failed ---\n");
+            }
         } else {
-            info("Using default/random input data (from PopulateInputTensor)\n");
+            info("Model not initialized. Press 'g' for GPIO test routine.\n");
         }
 
-        /* Run inference with GPIO timing signals */
-        info("\n--- Starting Inference ---\n");
-
-        /* Run the inference */
-        bool inference_success = arm::app::RunInferenceHandler(caseContext, true);
-
-        if (inference_success) {
-            info("--- Inference completed successfully ---\n");
-        } else {
-            printf_err("--- Inference failed ---\n");
-        }
-
-        info("Inference finished. Press 'g' for special GPIO routine or any other key to stay in loop.\n");
+        info("Press 'g' for special GPIO routine or any other key to continue.\n");
         while (true) {
             char c = uart_getchar();
             if (c == 'g' || c == 'G') {
                 printf("G - Triggering special GPIO routine\n");
                 inference_timing_cycle_routine();
-                info("Press 'g' for special GPIO routine or any other key to stay in loop.\n");
+                info("Press 'g' for special GPIO routine or any other key to continue.\n");
+            } else {
+                // Any other key breaks out to restart the main loop
+                break;
             }
         }
     }
