@@ -121,7 +121,7 @@ void inference_timing_cycle_routine(void)
 void inference_timing_pre_start(void)
 {
     if (initialized) {
-        printf("Setting pre-inference pin high.\n");
+        // printf("Setting pre-inference pin high.\n");
         gpio0->SetValue(PRE_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_HIGH);
     }
 }
@@ -129,7 +129,7 @@ void inference_timing_pre_start(void)
 void inference_timing_pre_end(void)
 {
     if (initialized) {
-        printf("Setting pre-inference pin low.\n");
+        // printf("Setting pre-inference pin low.\n");
         gpio0->SetValue(PRE_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_LOW);
     }
 }
@@ -137,7 +137,7 @@ void inference_timing_pre_end(void)
 void inference_timing_post_start(void)
 {
     if (initialized) {
-        printf("Setting post-inference pin high.\n");
+        // printf("Setting post-inference pin high.\n");
         gpio0->SetValue(POST_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_HIGH);
     }
 }
@@ -145,7 +145,7 @@ void inference_timing_post_start(void)
 void inference_timing_post_end(void)
 {
     if (initialized) {
-        printf("Setting post-inference pin low.\n");
+        // printf("Setting post-inference pin low.\n");
         gpio0->SetValue(POST_INFERENCE_GPIO_PIN, GPIO_PIN_OUTPUT_STATE_LOW);
     }
 }
