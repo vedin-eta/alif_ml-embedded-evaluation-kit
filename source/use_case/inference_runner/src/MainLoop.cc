@@ -26,6 +26,7 @@ extern "C" {
 #include "uart_tracelib.h"          /* UART communication functions */
 #include "inference_timing.h"       /* GPIO timing signals */
 #include "delay.h"                  /* Accurate delay functions */
+#include "RTE_Components.h"
 }
 
 #include <cstring>                  /* For memcpy */
@@ -173,6 +174,13 @@ static void LoadInputFromUART(const arm::app::Model& model)
 
 void MainLoop()
 {
+    // delay to give the serial reader time to initialize
+    sleep_or_wait_msec(1000);
+    info("\n");
+    info("========================================\n");
+    info("  Inference Runner - Starting\n");
+    info("========================================\n");
+    info("Processor internal clock: %" PRIu32 "Hz\n", GetSystemCoreClock());
     /* Initialize GPIO timing pins first - regardless of model init success */
     if (inference_timing_init() == 0) {
         info("GPIO timing pins initialized (P0_0=pre, P0_1=post)\n");
