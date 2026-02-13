@@ -1,31 +1,30 @@
 #!/bin/bash
 set -e  # Exit on any error
 
+USE_CASE_NAME=alif_object_detection
+
 PROJECT_DIR=/home/eta_lab/Project/alif_ml-embedded-evaluation-kit
-BUILD_DIR=/home/eta_lab/Project/alif_ml-embedded-evaluation-kit/cmake-build-release-arm-gcc
-BINARY_PATH=$BUILD_DIR/bin/sectors/alif_object_detection/mram.bin
+BUILD_DIR=/home/eta_lab/Project/alif_ml-embedded-evaluation-kit/build_hp
+BINARY_PATH=$BUILD_DIR/bin/sectors/$USE_CASE_NAME/mram.bin
 SETOOLS_ROOT=/home/eta_lab/Project/app-release-exec-linux
 NEW_BINARY_PATH=$SETOOLS_ROOT/build/images/mram.bin
 FLASH_CONFIG_PATH=$SETOOLS_ROOT/build/config/alif_ew_demo.json
 
+cd $BUILD_DIR
+
 echo "=== Building project ==="
-cmake -Wno-dev \
-    -S $PROJECT_DIR \
-    -B $BUILD_DIR \
-    -DUSE_CASE_BUILD=alif_object_detection \
-    -DTARGET_PLATFORM=alif \
-    -DTARGET_SUBSYSTEM=RTSS-HP \
-    -DTARGET_BOARD=AppKit-e7 \
-    -DLINKER_SCRIPT_NAME=RTSS-HP-merged-SRAM \
-    -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DLOG_LEVEL=LOG_LEVEL_DEBUG \
-    -DGLCD_UI=NO \
-    -DTENSORFLOW_LITE_MICRO_CLEAN_BUILD=OFF
+cmake -DTARGET_PLATFORM=alif \
+ -DTARGET_SUBSYSTEM=RTSS-HP \
+ -DTARGET_BOARD=AppKit-e7 \
+ -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake \
+ -DCONSOLE_UART=2 \
+ -DCMAKE_BUILD_TYPE=Release \
+ -DROTATE_DISPLAY=180 \
+ -DLOG_LEVEL=LOG_LEVEL_DEBUG ..
 
 echo "=== Compiling ==="
 cd $BUILD_DIR
-make -j$(nproc)
+make ethos-u-$USE_CASE_NAME -j4
 
 echo "=== Copying binary ==="
 if [ ! -f "$BINARY_PATH" ]; then
