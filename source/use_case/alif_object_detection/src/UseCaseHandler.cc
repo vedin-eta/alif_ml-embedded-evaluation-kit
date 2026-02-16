@@ -48,7 +48,7 @@
 
 namespace {
 lv_style_t boxStyle;
-lvgl_pixel_t lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section(".bss.lcd_image_buf")));                      // 192x192x2 = 73,728
+lvgl_pixel_t lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section(".bss.lcd_image_buf")));                      // 196x196x2 = 76,832
 };
 
 using arm::app::Profiler;
@@ -61,6 +61,15 @@ using arm::app::DetectorPostProcess;
 namespace alif {
 namespace app {
 
+#ifdef MODEL_TYPE_SSD
+/* Animal detection class labels */
+constexpr int numClasses = 10;
+constexpr const char* classLabels[] = {
+    "bird", "cat", "dog", "horse", "sheep",
+    "cow", "elephant", "bear", "zebra", "giraffe"
+};
+#endif
+
 namespace object_detection {
 using namespace arm::app::object_detection;
 }
@@ -70,9 +79,15 @@ using namespace arm::app::object_detection;
 
         ScreenLayoutInit(lvgl_image, sizeof lvgl_image, LIMAGE_X, LIMAGE_Y, LV_ZOOM);
         uint32_t lv_lock_state = lv_port_lock();
+#ifdef MODEL_TYPE_SSD
+        lv_label_set_text_static(ScreenLayoutHeaderObject(), "Animal Detection");
+        lv_label_set_text_static(ScreenLayoutLabelObject(0), "Animals Detected: 0");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "352px image (24-bit)");
+#else
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
         lv_label_set_text_static(ScreenLayoutLabelObject(1), "192px image (24-bit)");
+#endif
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
@@ -95,11 +110,19 @@ using namespace arm::app::object_detection;
         const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
         const int inputImgRows = inputShape->data[YoloFastestModel::ms_inputRowsIdx];
 
+        info("DEBUG: Model input shape from tensor:\n");
+        info("DEBUG:   inputImgCols = %d\n", inputImgCols);
+        info("DEBUG:   inputImgRows = %d\n", inputImgRows);
+        info("DEBUG:   Expected camera frame size = %d bytes (%d x %d x 3)\n",
+             inputImgCols * inputImgRows * 3, inputImgCols, inputImgRows);
+
         auto bCamera = hal_camera_configure(inputImgCols, inputImgRows, HAL_CAMERA_MODE_SINGLE_FRAME, HAL_CAMERA_COLOUR_FORMAT_RGB888);
         if (!bCamera) {
             printf_err("Failed to configure camera.\n");
             return false;
         }
+
+        info("DEBUG: Camera configured successfully for %d x %d RGB888\n", inputImgCols, inputImgRows);
 
         return true;
     }
@@ -153,10 +176,21 @@ using namespace arm::app::object_detection;
         DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, true, model.IsDataSigned());
 
         std::vector<object_detection::DetectionResult> results;
+#ifdef MODEL_TYPE_SSD
         const object_detection::PostProcessParams postProcessParams {
             inputImgRows, inputImgCols, object_detection::originalImageSize,
-            object_detection::anchor1, object_detection::anchor2
+            object_detection::anchor1, object_detection::anchor2,
+            0.5f, 0.45f, numClasses, 0,
+            object_detection::ModelType::SSD
         };
+#else
+        const object_detection::PostProcessParams postProcessParams {
+            inputImgRows, inputImgCols, object_detection::originalImageSize,
+            object_detection::anchor1, object_detection::anchor2,
+            0.5f, 0.45f, 1, 0,
+            object_detection::ModelType::YOLO
+        };
+#endif
         DetectorPostProcess postProcess = DetectorPostProcess(outputTensor0, outputTensor1,
                 results, postProcessParams);
 
@@ -218,7 +252,11 @@ using namespace arm::app::object_detection;
             //lv_label_set_text_fmt(ScreenLayoutLabelObject(3), "Inferences / second: %.2f", (double) SystemCoreClock / (inf_loop_time_end - inf_loop_time_start));
 #endif
 
+#ifdef MODEL_TYPE_SSD
+            lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Animals Detected: %i", results.size());
+#else
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
+#endif
 
             /* Draw boxes. */
             DrawDetectionBoxes(results, inputImgCols, inputImgRows);
@@ -246,9 +284,19 @@ using namespace arm::app::object_detection;
         info("Total number of inferences: 1\n");
 
         for (uint32_t i = 0; i < results.size(); ++i) {
+#ifdef MODEL_TYPE_SSD
+            const char* className = "unknown";
+            if (results[i].m_classIndex >= 0 && results[i].m_classIndex < numClasses) {
+                className = classLabels[results[i].m_classIndex];
+            }
+            info("%" PRIu32 ") (%f) -> %s {x=%d,y=%d,w=%d,h=%d}\n", i,
+                results[i].m_normalisedVal, className,
+                results[i].m_x0, results[i].m_y0, results[i].m_w, results[i].m_h );
+#else
             info("%" PRIu32 ") (%f) -> %s {x=%d,y=%d,w=%d,h=%d}\n", i,
                 results[i].m_normalisedVal, "Detection box:",
                 results[i].m_x0, results[i].m_y0, results[i].m_w, results[i].m_h );
+#endif
         }
 
         return true;
@@ -264,12 +312,23 @@ using namespace arm::app::object_detection;
         }
     }
 
-    static void CreateBox(lv_obj_t *frame, int x0, int y0, int w, int h)
+    static void CreateBox(lv_obj_t *frame, int x0, int y0, int w, int h, const char* label = nullptr)
     {
         lv_obj_t *box = lv_obj_create(frame);
         lv_obj_set_size(box, w, h);
         lv_obj_add_style(box, &boxStyle, LV_PART_MAIN);
         lv_obj_set_pos(box, x0, y0);
+
+        /* Add label if provided */
+        if (label != nullptr) {
+            lv_obj_t *text = lv_label_create(box);
+            lv_label_set_text(text, label);
+            lv_obj_set_style_text_color(text, lv_color_white(), LV_PART_MAIN);
+            lv_obj_set_style_bg_color(text, lv_theme_get_color_primary(frame), LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(text, LV_OPA_70, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(text, 2, LV_PART_MAIN);
+            lv_obj_align(text, LV_ALIGN_TOP_LEFT, 0, 0);
+        }
     }
 
     static void DrawDetectionBoxes(const std::vector<object_detection::DetectionResult>& results,
@@ -282,11 +341,24 @@ using namespace arm::app::object_detection;
         DeleteBoxes(frame);
 
         for (const auto& result: results) {
+#ifdef MODEL_TYPE_SSD
+            const char* className = nullptr;
+            if (result.m_classIndex >= 0 && result.m_classIndex < numClasses) {
+                className = classLabels[result.m_classIndex];
+            }
+            CreateBox(frame,
+                      floor(result.m_x0 * xScale),
+                      floor(result.m_y0 * yScale),
+                      ceil(result.m_w * xScale),
+                      ceil(result.m_h * yScale),
+                      className);
+#else
             CreateBox(frame,
                       floor(result.m_x0 * xScale),
                       floor(result.m_y0 * yScale),
                       ceil(result.m_w * xScale),
                       ceil(result.m_h * yScale));
+#endif
         }
     }
 

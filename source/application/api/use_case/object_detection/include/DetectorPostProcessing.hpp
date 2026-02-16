@@ -28,6 +28,11 @@ namespace arm {
 namespace app {
 namespace object_detection {
 
+    enum class ModelType {
+        YOLO,
+        SSD
+    };
+
     struct PostProcessParams {
         int inputImgRows{};
         int inputImgCols{};
@@ -38,6 +43,7 @@ namespace object_detection {
         float nms = 0.45f;
         int numClasses = 1;
         int topN = 0;
+        ModelType modelType = ModelType::YOLO;
     };
 
     struct Branch {
@@ -113,6 +119,12 @@ namespace object_detection {
                              int imageHeight,
                              float threshold,
                              std::forward_list<image::Detection>& detections);
+
+        /**
+         * @brief        Process SSD model outputs.
+         * @return       true if successful, false otherwise.
+         **/
+        bool ProcessSSD();
     };
 
 } /* namespace app */

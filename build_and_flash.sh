@@ -22,6 +22,7 @@ cmake -DTARGET_PLATFORM=alif \
  -DCONSOLE_UART=2 \
  -DCMAKE_BUILD_TYPE=Release \
  -DROTATE_DISPLAY=180 \
+ -Dalif_object_detection_MODEL_TYPE=SSD \
  -DLOG_LEVEL=LOG_LEVEL_DEBUG ..
 
 echo "=== Compiling ==="

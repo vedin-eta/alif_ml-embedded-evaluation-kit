@@ -40,7 +40,8 @@ namespace object_detection {
                 m_x0(x0),
                 m_y0(y0),
                 m_w(w),
-                m_h(h)
+                m_h(h),
+                m_classIndex(0)
             {
             }
 
@@ -52,6 +53,7 @@ namespace object_detection {
         int     m_y0{0};
         int     m_w{0};
         int     m_h{0};
+        int     m_classIndex{0};  /* Class index for multi-class detection */
     };
 
 } /* namespace object_detection */

@@ -31,20 +31,24 @@ USER_OPTION(${use_case}_MODEL_IN_EXT_FLASH "Run model from external flash"
     OFF
     BOOL)
 
+USER_OPTION(${use_case}_MODEL_TYPE "Model architecture type: YOLO or SSD"
+    "SSD"
+    STRING)
+
 USER_OPTION(${use_case}_IMAGE_SIZE "Square image size in pixels. Images will be resized to this size."
     192
     STRING)
 
-USER_OPTION(${use_case}_ANCHOR_1 "First anchor array estimated during training."
+USER_OPTION(${use_case}_ANCHOR_1 "First anchor array estimated during training (YOLO only)."
     "{38, 77, 47, 97, 61, 126}"
     STRING)
 
-USER_OPTION(${use_case}_ANCHOR_2 "Second anchor array estimated during training."
+USER_OPTION(${use_case}_ANCHOR_2 "Second anchor array estimated during training (YOLO only)."
     "{14, 26, 19, 37, 28, 55 }"
     STRING)
 
 USER_OPTION(${use_case}_ACTIVATION_BUF_SZ "Activation buffer size for the chosen model"
-    0x00082000
+    0x00200000
     STRING)
 
 USER_OPTION(${use_case}_SHOW_INF_TIME "Show inference time"
@@ -53,12 +57,18 @@ USER_OPTION(${use_case}_SHOW_INF_TIME "Show inference time"
 
 set(${use_case}_COMPILE_DEFS
     SHOW_INF_TIME=$<BOOL:${${use_case}_SHOW_INF_TIME}>
+    MODEL_TYPE_${${use_case}_MODEL_TYPE}=1
 )
 
-if (ETHOS_U_NPU_ENABLED)
-    set(DEFAULT_MODEL_PATH      ${RESOURCES_PATH}/object_detection/yolo-fastest_192_face_v4_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
+# Set default model path based on model type
+if("${${use_case}_MODEL_TYPE}" STREQUAL "SSD")
+    set(DEFAULT_MODEL_PATH      ${CMAKE_SOURCE_DIR}/alif_model_vela.tflite)
 else()
-    set(DEFAULT_MODEL_PATH      ${RESOURCES_PATH}/object_detection/yolo-fastest_192_face_v4.tflite)
+    if (ETHOS_U_NPU_ENABLED)
+        set(DEFAULT_MODEL_PATH      ${RESOURCES_PATH}/object_detection/yolo-fastest_192_face_v4_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
+    else()
+        set(DEFAULT_MODEL_PATH      ${RESOURCES_PATH}/object_detection/yolo-fastest_192_face_v4.tflite)
+    endif()
 endif()
 
 set(${use_case}_ORIGINAL_IMAGE_SIZE

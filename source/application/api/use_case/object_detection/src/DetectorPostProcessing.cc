@@ -18,6 +18,8 @@
 #include "PlatformMath.hpp"
 
 #include <cmath>
+#include <algorithm>
+#include <vector>
 
 namespace arm {
 namespace app {
@@ -66,7 +68,12 @@ namespace app {
 
 bool DetectorPostProcess::DoPostProcess()
 {
-    /* Start postprocessing */
+    /* Check model type and use appropriate post-processing */
+    if (m_postProcessParams.modelType == object_detection::ModelType::SSD) {
+        return ProcessSSD();
+    }
+
+    /* YOLO post-processing */
     int originalImageWidth  = m_postProcessParams.originalImageSize;
     int originalImageHeight = m_postProcessParams.originalImageSize;
 
@@ -109,6 +116,7 @@ bool DetectorPostProcess::DoPostProcess()
                 tmpResult.m_y0 = boxY;
                 tmpResult.m_w = boxWidth;
                 tmpResult.m_h = boxHeight;
+                tmpResult.m_classIndex = j;
 
                 this->m_results.push_back(tmpResult);
             }
@@ -221,6 +229,135 @@ void DetectorPostProcess::GetNetworkBoxes(
     }
     if(num > net.topN)
         num -=1;
+}
+
+bool DetectorPostProcess::ProcessSSD()
+{
+    /* SSD post-processing
+     * Output 0: Bounding boxes [batch, num_boxes, 4] - normalized [xmin, ymin, xmax, ymax]
+     * Output 1: Class scores [batch, num_boxes, num_classes+1] - includes background class at index 0
+     */
+
+    int originalImageWidth  = m_postProcessParams.originalImageSize;
+    int originalImageHeight = m_postProcessParams.originalImageSize;
+
+    /* Get quantization parameters */
+    const auto* box_quantization = static_cast<TfLiteAffineQuantization*>(
+        this->m_outputTensor0->quantization.params);
+    const float box_scale = box_quantization->scale->data[0];
+    const int box_zero_point = box_quantization->zero_point->data[0];
+
+    const auto* score_quantization = static_cast<TfLiteAffineQuantization*>(
+        this->m_outputTensor1->quantization.params);
+    const float score_scale = score_quantization->scale->data[0];
+    const int score_zero_point = score_quantization->zero_point->data[0];
+
+    /* Get tensor dimensions */
+    int num_boxes = this->m_outputTensor0->dims->data[1];
+    int num_classes_with_bg = this->m_outputTensor1->dims->data[2];
+    int num_classes = num_classes_with_bg - 1; /* Remove background class */
+
+    int8_t* boxes = this->m_outputTensor0->data.int8;
+    int8_t* scores = this->m_outputTensor1->data.int8;
+
+    /* Process each box */
+    for (int box_idx = 0; box_idx < num_boxes; ++box_idx) {
+        /* Get box coordinates (normalized [0, 1]) */
+        int box_offset = box_idx * 4;
+        float xmin = (static_cast<float>(boxes[box_offset + 0]) - box_zero_point) * box_scale;
+        float ymin = (static_cast<float>(boxes[box_offset + 1]) - box_zero_point) * box_scale;
+        float xmax = (static_cast<float>(boxes[box_offset + 2]) - box_zero_point) * box_scale;
+        float ymax = (static_cast<float>(boxes[box_offset + 3]) - box_zero_point) * box_scale;
+
+        /* Clamp to [0, 1] */
+        xmin = std::max(0.0f, std::min(1.0f, xmin));
+        ymin = std::max(0.0f, std::min(1.0f, ymin));
+        xmax = std::max(0.0f, std::min(1.0f, xmax));
+        ymax = std::max(0.0f, std::min(1.0f, ymax));
+
+        /* Convert to pixel coordinates */
+        float boxX = xmin * originalImageWidth;
+        float boxY = ymin * originalImageHeight;
+        float boxWidth = (xmax - xmin) * originalImageWidth;
+        float boxHeight = (ymax - ymin) * originalImageHeight;
+
+        /* Check each class (skip background at index 0) */
+        for (int class_idx = 1; class_idx < num_classes_with_bg; ++class_idx) {
+            int score_offset = box_idx * num_classes_with_bg + class_idx;
+            float score = (static_cast<float>(scores[score_offset]) - score_zero_point) * score_scale;
+
+            /* Apply threshold */
+            if (score > m_postProcessParams.threshold) {
+                object_detection::DetectionResult tmpResult = {};
+                tmpResult.m_normalisedVal = score;
+                tmpResult.m_x0 = boxX;
+                tmpResult.m_y0 = boxY;
+                tmpResult.m_w = boxWidth;
+                tmpResult.m_h = boxHeight;
+                tmpResult.m_classIndex = class_idx - 1; /* Adjust for removed background class */
+
+                this->m_results.push_back(tmpResult);
+            }
+        }
+    }
+
+    /* Apply NMS per class */
+    if (this->m_results.size() > 0) {
+        /* Simple NMS implementation per class */
+        std::vector<object_detection::DetectionResult> filtered_results;
+
+        for (int c = 0; c < num_classes; ++c) {
+            /* Get all detections for this class */
+            std::vector<object_detection::DetectionResult> class_detections;
+            for (const auto& det : this->m_results) {
+                if (det.m_classIndex == c) {
+                    class_detections.push_back(det);
+                }
+            }
+
+            /* Sort by score (descending) */
+            std::sort(class_detections.begin(), class_detections.end(),
+                     [](const object_detection::DetectionResult& a, const object_detection::DetectionResult& b) {
+                         return a.m_normalisedVal > b.m_normalisedVal;
+                     });
+
+            /* Apply NMS */
+            std::vector<bool> suppressed(class_detections.size(), false);
+            for (size_t i = 0; i < class_detections.size(); ++i) {
+                if (suppressed[i]) continue;
+
+                filtered_results.push_back(class_detections[i]);
+
+                /* Suppress overlapping boxes */
+                for (size_t j = i + 1; j < class_detections.size(); ++j) {
+                    if (suppressed[j]) continue;
+
+                    /* Calculate IoU */
+                    float x1 = std::max(class_detections[i].m_x0, class_detections[j].m_x0);
+                    float y1 = std::max(class_detections[i].m_y0, class_detections[j].m_y0);
+                    float x2 = std::min(class_detections[i].m_x0 + class_detections[i].m_w,
+                                       class_detections[j].m_x0 + class_detections[j].m_w);
+                    float y2 = std::min(class_detections[i].m_y0 + class_detections[i].m_h,
+                                       class_detections[j].m_y0 + class_detections[j].m_h);
+
+                    float intersection = std::max(0.0f, x2 - x1) * std::max(0.0f, y2 - y1);
+                    float area_i = class_detections[i].m_w * class_detections[i].m_h;
+                    float area_j = class_detections[j].m_w * class_detections[j].m_h;
+                    float union_area = area_i + area_j - intersection;
+
+                    float iou = (union_area > 0) ? (intersection / union_area) : 0;
+
+                    if (iou > m_postProcessParams.nms) {
+                        suppressed[j] = true;
+                    }
+                }
+            }
+        }
+
+        this->m_results = filtered_results;
+    }
+
+    return true;
 }
 
 } /* namespace app */
