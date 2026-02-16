@@ -4,8 +4,9 @@ set -e  # Exit on any error
 USE_CASE_NAME=alif_object_detection
 
 PROJECT_DIR=/home/eta_lab/Project/alif_ml-embedded-evaluation-kit
-BUILD_DIR=/home/eta_lab/Project/alif_ml-embedded-evaluation-kit/build_hp
+BUILD_DIR=$PROJECT_DIR/build_hp
 BINARY_PATH=$BUILD_DIR/bin/sectors/$USE_CASE_NAME/mram.bin
+
 SETOOLS_ROOT=/home/eta_lab/Project/app-release-exec-linux
 NEW_BINARY_PATH=$SETOOLS_ROOT/build/images/mram.bin
 FLASH_CONFIG_PATH=$SETOOLS_ROOT/build/config/alif_ew_demo.json
@@ -16,6 +17,7 @@ echo "=== Building project ==="
 cmake -DTARGET_PLATFORM=alif \
  -DTARGET_SUBSYSTEM=RTSS-HP \
  -DTARGET_BOARD=AppKit-e7 \
+ -DUSE_CASE_BUILD=$USE_CASE_NAME \
  -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake \
  -DCONSOLE_UART=2 \
  -DCMAKE_BUILD_TYPE=Release \
