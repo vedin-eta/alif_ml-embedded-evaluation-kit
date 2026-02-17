@@ -82,7 +82,7 @@ using namespace arm::app::object_detection;
 #ifdef MODEL_TYPE_SSD
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Animal Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Animals Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "352px image (24-bit)");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "192px image (24-bit)");
 #else
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
@@ -214,11 +214,6 @@ using namespace arm::app::object_detection;
                             currImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
 
-            if (!run_requested()) {
-               lv_led_off(ScreenLayoutLEDObject());
-               return false;
-            }
-
             lv_led_on(ScreenLayoutLEDObject());
 
             const size_t copySz = inputTensor->bytes;
@@ -254,6 +249,7 @@ using namespace arm::app::object_detection;
 
 #ifdef MODEL_TYPE_SSD
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Animals Detected: %i", results.size());
+            info("Number of animals detected: %zu\n", results.size());
 #else
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
 #endif
