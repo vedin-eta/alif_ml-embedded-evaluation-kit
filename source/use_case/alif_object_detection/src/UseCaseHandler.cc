@@ -159,6 +159,11 @@ using namespace arm::app::object_detection;
         TfLiteTensor* outputTensor0 = model.GetOutputTensor(0);
         TfLiteTensor* outputTensor1 = model.GetOutputTensor(1);
 
+        info("\n=== MODEL TENSOR INFORMATION ===\n");
+        info("Input tensor - type: %d, bytes: %zu\n", inputTensor->type, inputTensor->bytes);
+        info("Output tensor 0 - type: %d, bytes: %zu\n", outputTensor0->type, outputTensor0->bytes);
+        info("Output tensor 1 - type: %d, bytes: %zu\n", outputTensor1->type, outputTensor1->bytes);
+
         if (!inputTensor->dims) {
             printf_err("Invalid input tensor dims\n");
             return false;
@@ -167,20 +172,47 @@ using namespace arm::app::object_detection;
             return false;
         }
 
+        info("Input tensor dims: [");
+        for (int i = 0; i < inputTensor->dims->size; i++) {
+            info("%d%s", inputTensor->dims->data[i], i < inputTensor->dims->size - 1 ? ", " : "");
+        }
+        info("]\n");
+
+        info("Output tensor 0 dims: [");
+        for (int i = 0; i < outputTensor0->dims->size; i++) {
+            info("%d%s", outputTensor0->dims->data[i], i < outputTensor0->dims->size - 1 ? ", " : "");
+        }
+        info("]\n");
+
+        info("Output tensor 1 dims: [");
+        for (int i = 0; i < outputTensor1->dims->size; i++) {
+            info("%d%s", outputTensor1->dims->data[i], i < outputTensor1->dims->size - 1 ? ", " : "");
+        }
+        info("]\n");
+
         TfLiteIntArray* inputShape = model.GetInputShape(0);
 
         const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
         const int inputImgRows = inputShape->data[YoloFastestModel::ms_inputRowsIdx];
 
+        info("Parsed input dimensions: %dx%d (expecting RGB, 3 channels)\n", inputImgCols, inputImgRows);
+
         /* Set up pre and post-processing. */
+        info("Model data signed: %s\n", model.IsDataSigned() ? "YES" : "NO");
         DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, true, model.IsDataSigned());
 
         std::vector<object_detection::DetectionResult> results;
 #ifdef MODEL_TYPE_SSD
+        info("\n=== SSD POST-PROCESSING PARAMETERS ===\n");
+        info("Network input: %dx%d\n", inputImgRows, inputImgCols);
+        info("Original image size: %d\n", object_detection::originalImageSize);
+        info("Confidence threshold: 0.5\n");
+        info("NMS threshold: 0.45\n");
+        info("Number of classes: %d\n", numClasses);
         const object_detection::PostProcessParams postProcessParams {
             inputImgRows, inputImgCols, object_detection::originalImageSize,
             object_detection::anchor1, object_detection::anchor2,
-            0.5f, 0.45f, numClasses, 0,
+            0.1f, 0.45f, numClasses, 0,
             object_detection::ModelType::SSD
         };
 #else
@@ -197,22 +229,40 @@ using namespace arm::app::object_detection;
         /* Ensure there are no results leftover from previous inference when running all. */
         results.clear();
 
+        info("\n=== CAMERA CAPTURE ===\n");
+        info("Starting camera capture...\n");
         hal_camera_start();
 
+        info("Waiting for captured frame...\n");
         uint32_t capturedFrameSize = 0;
         const uint8_t* currImage = hal_camera_get_captured_frame(&capturedFrameSize);
         if (!currImage || !capturedFrameSize) {
             printf_err("hal_camera_get_captured_frame failed");
             return false;
         }
+        info("Frame captured successfully, size: %u bytes (expected: %zu for RGB)\n",
+             capturedFrameSize, inputImgCols * inputImgRows * 3);
+
+        // Debug: Check first few RGB pixel values
+        if (capturedFrameSize >= 12) {
+            info("First 4 RGB pixels: R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d\n",
+                 currImage[0], currImage[1], currImage[2],
+                 currImage[3], currImage[4], currImage[5],
+                 currImage[6], currImage[7], currImage[8],
+                 currImage[9], currImage[10], currImage[11]);
+        }
 
         {
             ScopedLVGLLock lv_lock;
 
+            info("\n=== LCD DISPLAY ===\n");
+            info("Preparing to display image on LCD...\n");
             /* Display this image on the LCD. */
             write_to_lvgl_buf(inputImgCols, inputImgRows,
                             currImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
+            info("Image displayed on LCD\n");
+            info("Run requested - proceeding with inference\n");
 
             lv_led_on(ScreenLayoutLEDObject());
 
@@ -223,22 +273,72 @@ using namespace arm::app::object_detection;
 #endif
 
             /* Run the pre-processing, inference and post-processing. */
+            info("\n=== PRE-PROCESSING ===\n");
+            info("Starting pre-processing (RGB input)...\n");
+            info("Input tensor bytes to copy: %zu\n", copySz);
             if (!preProcess.DoPreProcess(currImage, copySz)) {
                 printf_err("Pre-processing failed.");
                 return false;
             }
+            info("Pre-processing completed\n");
+
+            // Debug: Check first few values in input tensor after pre-processing
+            if (inputTensor->type == kTfLiteUInt8 && inputTensor->bytes >= 12) {
+                uint8_t* tensorData = inputTensor->data.uint8;
+                info("First 12 values in input tensor (uint8): %d %d %d %d %d %d %d %d %d %d %d %d\n",
+                     tensorData[0], tensorData[1], tensorData[2], tensorData[3],
+                     tensorData[4], tensorData[5], tensorData[6], tensorData[7],
+                     tensorData[8], tensorData[9], tensorData[10], tensorData[11]);
+            } else if (inputTensor->type == kTfLiteInt8 && inputTensor->bytes >= 12) {
+                int8_t* tensorData = inputTensor->data.int8;
+                info("First 12 values in input tensor (int8): %d %d %d %d %d %d %d %d %d %d %d %d\n",
+                     tensorData[0], tensorData[1], tensorData[2], tensorData[3],
+                     tensorData[4], tensorData[5], tensorData[6], tensorData[7],
+                     tensorData[8], tensorData[9], tensorData[10], tensorData[11]);
+            }
 
             /* Run inference over this image. */
-
+            info("\n=== MODEL INFERENCE ===\n");
+            info("Running model inference...\n");
             if (!RunInference(model, profiler)) {
                 printf_err("Inference failed.");
                 return false;
             }
+            info("Model inference successful!\n");
 
+            // Debug: Check output tensor values
+            info("\n=== OUTPUT TENSORS ===\n");
+            if (outputTensor0->type == kTfLiteUInt8 && outputTensor0->bytes >= 10) {
+                uint8_t* out0Data = outputTensor0->data.uint8;
+                info("Output tensor 0 first 10 values (uint8): %d %d %d %d %d %d %d %d %d %d\n",
+                     out0Data[0], out0Data[1], out0Data[2], out0Data[3], out0Data[4],
+                     out0Data[5], out0Data[6], out0Data[7], out0Data[8], out0Data[9]);
+            } else if (outputTensor0->type == kTfLiteFloat32 && outputTensor0->bytes >= 40) {
+                float* out0Data = outputTensor0->data.f;
+                info("Output tensor 0 first 10 values (float32): %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n",
+                     out0Data[0], out0Data[1], out0Data[2], out0Data[3], out0Data[4],
+                     out0Data[5], out0Data[6], out0Data[7], out0Data[8], out0Data[9]);
+            }
+
+            if (outputTensor1->type == kTfLiteUInt8 && outputTensor1->bytes >= 10) {
+                uint8_t* out1Data = outputTensor1->data.uint8;
+                info("Output tensor 1 first 10 values (uint8): %d %d %d %d %d %d %d %d %d %d\n",
+                     out1Data[0], out1Data[1], out1Data[2], out1Data[3], out1Data[4],
+                     out1Data[5], out1Data[6], out1Data[7], out1Data[8], out1Data[9]);
+            } else if (outputTensor1->type == kTfLiteFloat32 && outputTensor1->bytes >= 40) {
+                float* out1Data = outputTensor1->data.f;
+                info("Output tensor 1 first 10 values (float32): %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n",
+                     out1Data[0], out1Data[1], out1Data[2], out1Data[3], out1Data[4],
+                     out1Data[5], out1Data[6], out1Data[7], out1Data[8], out1Data[9]);
+            }
+
+            info("\n=== POST-PROCESSING (SSD) ===\n");
+            info("Starting post-processing...\n");
             if (!postProcess.DoPostProcess()) {
                 printf_err("Post-processing failed.");
                 return false;
             }
+            info("Post-processing completed\n");
 
 #if SHOW_INF_TIME
             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
@@ -249,13 +349,54 @@ using namespace arm::app::object_detection;
 
 #ifdef MODEL_TYPE_SSD
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Animals Detected: %i", results.size());
+            info("\n=== DETECTION RESULTS ===\n");
             info("Number of animals detected: %zu\n", results.size());
+
+            // Print details for top 2 detections
+            size_t numToPrint = results.size() < 2 ? results.size() : 2;
+            if (numToPrint > 0) {
+                info("\nTop %zu detection(s):\n", numToPrint);
+                for (size_t i = 0; i < numToPrint; ++i) {
+                    const char* className = "unknown";
+                    if (results[i].m_classIndex >= 0 && results[i].m_classIndex < numClasses) {
+                        className = classLabels[results[i].m_classIndex];
+                    }
+                    info("  [%zu] Class: %s (index=%d), Confidence: %.4f, BBox: x=%d y=%d w=%d h=%d\n",
+                         i + 1,
+                         className,
+                         results[i].m_classIndex,
+                         results[i].m_normalisedVal,
+                         results[i].m_x0, results[i].m_y0,
+                         results[i].m_w, results[i].m_h);
+                }
+            } else {
+                info("No detections above confidence threshold\n");
+            }
 #else
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
+            info("\n=== DETECTION RESULTS ===\n");
+            info("Number of faces detected: %zu\n", results.size());
+
+            // Print details for top 2 detections
+            size_t numToPrint = results.size() < 2 ? results.size() : 2;
+            if (numToPrint > 0) {
+                info("\nTop %zu detection(s):\n", numToPrint);
+                for (size_t i = 0; i < numToPrint; ++i) {
+                    info("  [%zu] Confidence: %.4f, BBox: x=%d y=%d w=%d h=%d\n",
+                         i + 1,
+                         results[i].m_normalisedVal,
+                         results[i].m_x0, results[i].m_y0,
+                         results[i].m_w, results[i].m_h);
+                }
+            } else {
+                info("No detections above confidence threshold\n");
+            }
 #endif
 
             /* Draw boxes. */
+            info("Drawing detection boxes...\n");
             DrawDetectionBoxes(results, inputImgCols, inputImgRows);
+            info("Boxes drawn\n");
 
         } // ScopedLVGLLock
 
