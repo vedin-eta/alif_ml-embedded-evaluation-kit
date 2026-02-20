@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e  # Exit on any error
 
-USE_CASE_NAME=alif_camera_display
+USE_CASE_NAME=alif_object_detection
 
 PROJECT_DIR=/home/eta_lab/Project/alif_ml-embedded-evaluation-kit
 BUILD_DIR=$PROJECT_DIR/build_hp
