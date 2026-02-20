@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e  # Exit on any error
 
-USE_CASE_NAME=alif_object_detection
+USE_CASE_NAME=alif_camera_display
 
 PROJECT_DIR=/home/eta_lab/Project/alif_ml-embedded-evaluation-kit
 BUILD_DIR=$PROJECT_DIR/build_hp
@@ -31,8 +31,8 @@ make ethos-u-$USE_CASE_NAME -j4
 
 echo "=== Copying binary ==="
 if [ ! -f "$BINARY_PATH" ]; then
-    echo "Error: Binary not found at $BINARY_PATH"
-    exit 1
+    echo "Warning: Binary not found at $BINARY_PATH"
+    arm-none-eabi-objcopy -O binary --only-section *.at_mram $BUILD_DIR/bin/ethos-u-$USE_CASE_NAME.axf $BINARY_PATH
 fi
 cp $BINARY_PATH $NEW_BINARY_PATH
 
