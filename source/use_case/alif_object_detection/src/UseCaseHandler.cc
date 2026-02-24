@@ -42,9 +42,10 @@
 #include "lv_port.h"
 #include "lv_paint_utils.h"
 
-#define LIMAGE_X        192
-#define LIMAGE_Y        192
-#define LV_ZOOM         (2 * 256)
+#define LIMAGE_X        480
+#define LIMAGE_Y        480
+#define LV_ZOOM         (1 * 256)
+#define CAMERA_IMAGE_SIZE 512
 
 namespace {
 lv_style_t boxStyle;
@@ -80,7 +81,7 @@ using namespace arm::app::object_detection;
 
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Animal Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Animals Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 192x192 center crop");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 256x256 center crop");
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
@@ -109,14 +110,11 @@ using namespace arm::app::object_detection;
         info("DEBUG:   Expected model input size = %d bytes (%d x %d x 3)\n",
              inputImgCols * inputImgRows * 3, inputImgCols, inputImgRows);
 
-        /* Configure camera for full 512x512 RGB888 - we'll crop from center */
-        auto bCamera = hal_camera_configure(512, 512, HAL_CAMERA_MODE_SINGLE_FRAME, HAL_CAMERA_COLOUR_FORMAT_RGB888);
+        auto bCamera = hal_camera_configure(CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE, HAL_CAMERA_MODE_SINGLE_FRAME, HAL_CAMERA_COLOUR_FORMAT_RGB888);
         if (!bCamera) {
             printf_err("Failed to configure camera.\n");
             return false;
         }
-
-        info("DEBUG: Camera configured for 512x512 RGB888, will crop to %d x %d\n", inputImgCols, inputImgRows);
 
         return true;
     }
@@ -242,34 +240,12 @@ using namespace arm::app::object_detection;
             printf_err("hal_camera_get_captured_frame failed");
             return false;
         }
-        info("Full frame captured successfully, size: %u bytes (512x512 RGB)\n", capturedFrameSize);
 
-        /* Extract center crop from 512x512 image */
-        const int full_image_size = 512;
-        const int crop_start_x = (full_image_size - inputImgCols) / 2;
-        const int crop_start_y = (full_image_size - inputImgRows) / 2;
+        const int crop_start_x = (CAMERA_IMAGE_SIZE - inputImgCols) / 2;
+        const int crop_start_y = (CAMERA_IMAGE_SIZE - inputImgRows) / 2;
 
         info("Extracting center crop: %dx%d from offset (%d, %d)\n",
              inputImgCols, inputImgRows, crop_start_x, crop_start_y);
-
-        /* Allocate buffer for center crop */
-        static uint8_t croppedImage[192 * 192 * 3];
-
-        /* Copy center crop row by row */
-        for (int y = 0; y < inputImgRows; y++) {
-            const uint8_t* src_row = fullImage + ((crop_start_y + y) * full_image_size + crop_start_x) * 3;
-            uint8_t* dst_row = croppedImage + y * inputImgCols * 3;
-            memcpy(dst_row, src_row, inputImgCols * 3);
-        }
-
-        // Debug: Check first few RGB pixel values of cropped image
-        if (inputImgCols * inputImgRows * 3 >= 12) {
-            info("First 4 RGB pixels of crop: R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d\n",
-                 croppedImage[0], croppedImage[1], croppedImage[2],
-                 croppedImage[3], croppedImage[4], croppedImage[5],
-                 croppedImage[6], croppedImage[7], croppedImage[8],
-                 croppedImage[9], croppedImage[10], croppedImage[11]);
-        }
 
         {
             ScopedLVGLLock lv_lock;
@@ -278,7 +254,7 @@ using namespace arm::app::object_detection;
             info("Preparing to display cropped image on LCD...\n");
             /* Display the cropped image on the LCD. */
             write_to_lvgl_buf(inputImgCols, inputImgRows,
-                            croppedImage, &lvgl_image[0][0]);
+                            fullImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
             info("Cropped image displayed on LCD\n");
             info("Run requested - proceeding with inference\n");
@@ -295,26 +271,11 @@ using namespace arm::app::object_detection;
             info("\n=== PRE-PROCESSING ===\n");
             info("Starting pre-processing (RGB input from cropped image)...\n");
             info("Input tensor bytes to copy: %zu\n", copySz);
-            if (!preProcess.DoPreProcess(croppedImage, copySz)) {
+            if (!preProcess.DoPreProcess(fullImage, copySz)) {
                 printf_err("Pre-processing failed.");
                 return false;
             }
             info("Pre-processing completed\n");
-
-            // Debug: Check first few values in input tensor after pre-processing
-            if (inputTensor->type == kTfLiteUInt8 && inputTensor->bytes >= 12) {
-                uint8_t* tensorData = inputTensor->data.uint8;
-                info("First 12 values in input tensor (uint8): %d %d %d %d %d %d %d %d %d %d %d %d\n",
-                     tensorData[0], tensorData[1], tensorData[2], tensorData[3],
-                     tensorData[4], tensorData[5], tensorData[6], tensorData[7],
-                     tensorData[8], tensorData[9], tensorData[10], tensorData[11]);
-            } else if (inputTensor->type == kTfLiteInt8 && inputTensor->bytes >= 12) {
-                int8_t* tensorData = inputTensor->data.int8;
-                info("First 12 values in input tensor (int8): %d %d %d %d %d %d %d %d %d %d %d %d\n",
-                     tensorData[0], tensorData[1], tensorData[2], tensorData[3],
-                     tensorData[4], tensorData[5], tensorData[6], tensorData[7],
-                     tensorData[8], tensorData[9], tensorData[10], tensorData[11]);
-            }
 
             /* Run inference over this image. */
             info("\n=== MODEL INFERENCE ===\n");
