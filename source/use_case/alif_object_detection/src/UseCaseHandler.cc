@@ -236,7 +236,7 @@ using namespace arm::app::object_detection;
         const object_detection::PostProcessParams postProcessParams {
             inputImgRows, inputImgCols, object_detection::originalImageSize,
             object_detection::anchor1, object_detection::anchor2, object_detection::anchor3,
-            0.4f, 0.45f, numClasses, 10,
+            0.5f, 0.45f, numClasses, 10,
             object_detection::ModelType::YOLO
         };
 #endif
