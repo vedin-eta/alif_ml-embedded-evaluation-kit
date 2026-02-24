@@ -497,8 +497,8 @@ using namespace arm::app::object_detection;
         /* Additional scaling from LVGL if frame is zoomed */
         float frameWidth = (float) lv_obj_get_content_width(frame);
         float frameHeight = (float) lv_obj_get_content_height(frame);
-        float lvglXScale = frameWidth / DISPLAY_IMAGE_SIZE;
-        float lvglYScale = frameHeight / DISPLAY_IMAGE_SIZE;
+        float lvglXScale = frameWidth / (DISPLAY_IMAGE_SIZE * 2);
+        float lvglYScale = frameHeight / (DISPLAY_IMAGE_SIZE * 2);
 
         info("LVGL frame dimensions: %.1f x %.1f\n", frameWidth, frameHeight);
         info("  lvglXScale = %.3f, lvglYScale = %.3f\n", lvglXScale, lvglYScale);
