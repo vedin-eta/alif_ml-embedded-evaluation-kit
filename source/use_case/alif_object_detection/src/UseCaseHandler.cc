@@ -82,11 +82,11 @@ using namespace arm::app::object_detection;
 #ifdef MODEL_TYPE_SSD
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Animal Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Animals Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "192px image (24-bit)");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 192x192 center crop");
 #else
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "192px image (24-bit)");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 192x192 center crop");
 #endif
 
         lv_style_init(&boxStyle);
@@ -113,16 +113,17 @@ using namespace arm::app::object_detection;
         info("DEBUG: Model input shape from tensor:\n");
         info("DEBUG:   inputImgCols = %d\n", inputImgCols);
         info("DEBUG:   inputImgRows = %d\n", inputImgRows);
-        info("DEBUG:   Expected camera frame size = %d bytes (%d x %d x 3)\n",
+        info("DEBUG:   Expected model input size = %d bytes (%d x %d x 3)\n",
              inputImgCols * inputImgRows * 3, inputImgCols, inputImgRows);
 
-        auto bCamera = hal_camera_configure(inputImgCols, inputImgRows, HAL_CAMERA_MODE_SINGLE_FRAME, HAL_CAMERA_COLOUR_FORMAT_RGB888);
+        /* Configure camera for full 512x512 RGB888 - we'll crop from center */
+        auto bCamera = hal_camera_configure(512, 512, HAL_CAMERA_MODE_SINGLE_FRAME, HAL_CAMERA_COLOUR_FORMAT_RGB888);
         if (!bCamera) {
             printf_err("Failed to configure camera.\n");
             return false;
         }
 
-        info("DEBUG: Camera configured successfully for %d x %d RGB888\n", inputImgCols, inputImgRows);
+        info("DEBUG: Camera configured for 512x512 RGB888, will crop to %d x %d\n", inputImgCols, inputImgRows);
 
         return true;
     }
@@ -235,33 +236,50 @@ using namespace arm::app::object_detection;
 
         info("Waiting for captured frame...\n");
         uint32_t capturedFrameSize = 0;
-        const uint8_t* currImage = hal_camera_get_captured_frame(&capturedFrameSize);
-        if (!currImage || !capturedFrameSize) {
+        const uint8_t* fullImage = hal_camera_get_captured_frame(&capturedFrameSize);
+        if (!fullImage || !capturedFrameSize) {
             printf_err("hal_camera_get_captured_frame failed");
             return false;
         }
-        info("Frame captured successfully, size: %u bytes (expected: %zu for RGB)\n",
-             capturedFrameSize, inputImgCols * inputImgRows * 3);
+        info("Full frame captured successfully, size: %u bytes (512x512 RGB)\n", capturedFrameSize);
 
-        // Debug: Check first few RGB pixel values
-        if (capturedFrameSize >= 12) {
-            info("First 4 RGB pixels: R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d\n",
-                 currImage[0], currImage[1], currImage[2],
-                 currImage[3], currImage[4], currImage[5],
-                 currImage[6], currImage[7], currImage[8],
-                 currImage[9], currImage[10], currImage[11]);
+        /* Extract center crop from 512x512 image */
+        const int full_image_size = 512;
+        const int crop_start_x = (full_image_size - inputImgCols) / 2;
+        const int crop_start_y = (full_image_size - inputImgRows) / 2;
+
+        info("Extracting center crop: %dx%d from offset (%d, %d)\n",
+             inputImgCols, inputImgRows, crop_start_x, crop_start_y);
+
+        /* Allocate buffer for center crop */
+        static uint8_t croppedImage[192 * 192 * 3];
+
+        /* Copy center crop row by row */
+        for (int y = 0; y < inputImgRows; y++) {
+            const uint8_t* src_row = fullImage + ((crop_start_y + y) * full_image_size + crop_start_x) * 3;
+            uint8_t* dst_row = croppedImage + y * inputImgCols * 3;
+            memcpy(dst_row, src_row, inputImgCols * 3);
+        }
+
+        // Debug: Check first few RGB pixel values of cropped image
+        if (inputImgCols * inputImgRows * 3 >= 12) {
+            info("First 4 RGB pixels of crop: R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d | R=%d G=%d B=%d\n",
+                 croppedImage[0], croppedImage[1], croppedImage[2],
+                 croppedImage[3], croppedImage[4], croppedImage[5],
+                 croppedImage[6], croppedImage[7], croppedImage[8],
+                 croppedImage[9], croppedImage[10], croppedImage[11]);
         }
 
         {
             ScopedLVGLLock lv_lock;
 
             info("\n=== LCD DISPLAY ===\n");
-            info("Preparing to display image on LCD...\n");
-            /* Display this image on the LCD. */
+            info("Preparing to display cropped image on LCD...\n");
+            /* Display the cropped image on the LCD. */
             write_to_lvgl_buf(inputImgCols, inputImgRows,
-                            currImage, &lvgl_image[0][0]);
+                            croppedImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
-            info("Image displayed on LCD\n");
+            info("Cropped image displayed on LCD\n");
             info("Run requested - proceeding with inference\n");
 
             lv_led_on(ScreenLayoutLEDObject());
@@ -274,9 +292,9 @@ using namespace arm::app::object_detection;
 
             /* Run the pre-processing, inference and post-processing. */
             info("\n=== PRE-PROCESSING ===\n");
-            info("Starting pre-processing (RGB input)...\n");
+            info("Starting pre-processing (RGB input from cropped image)...\n");
             info("Input tensor bytes to copy: %zu\n", copySz);
-            if (!preProcess.DoPreProcess(currImage, copySz)) {
+            if (!preProcess.DoPreProcess(croppedImage, copySz)) {
                 printf_err("Pre-processing failed.");
                 return false;
             }
