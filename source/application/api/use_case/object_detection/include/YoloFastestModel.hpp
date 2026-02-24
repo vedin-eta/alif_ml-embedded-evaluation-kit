@@ -28,6 +28,7 @@ namespace app {
          * phase */
         extern const float anchor1[];
         extern const float anchor2[];
+        extern const float anchor3[];
     } /* namespace object_detection */
 
     class YoloFastestModel : public Model {

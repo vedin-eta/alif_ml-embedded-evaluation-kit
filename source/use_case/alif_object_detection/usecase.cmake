@@ -36,15 +36,19 @@ USER_OPTION(${use_case}_MODEL_TYPE "Model architecture type: YOLO or SSD"
     STRING)
 
 USER_OPTION(${use_case}_IMAGE_SIZE "Square image size in pixels. Images will be resized to this size."
-    192
+    256
     STRING)
 
-USER_OPTION(${use_case}_ANCHOR_1 "First anchor array estimated during training (YOLO only)."
-    "{38, 77, 47, 97, 61, 126}"
+USER_OPTION(${use_case}_ANCHOR_1 "First anchor array for 32x32 grid - small objects (YOLO only)."
+    "{7, 9, 20, 29, 41, 48}"
     STRING)
 
-USER_OPTION(${use_case}_ANCHOR_2 "Second anchor array estimated during training (YOLO only)."
-    "{14, 26, 19, 37, 28, 55 }"
+USER_OPTION(${use_case}_ANCHOR_2 "Second anchor array for 16x16 grid - medium objects (YOLO only)."
+    "{43, 112, 80, 76, 83, 156}"
+    STRING)
+
+USER_OPTION(${use_case}_ANCHOR_3 "Third anchor array for 8x8 grid - large objects (YOLO only)."
+    "{154, 114, 133, 196, 211, 205}"
     STRING)
 
 USER_OPTION(${use_case}_ACTIVATION_BUF_SZ "Activation buffer size for the chosen model"
@@ -81,6 +85,7 @@ set(EXTRA_MODEL_CODE
     "/* NOTE: anchors are different for any given input model size, estimated during training phase */"
     "extern const float anchor1[] = ${${use_case}_ANCHOR_1};"
     "extern const float anchor2[] = ${${use_case}_ANCHOR_2};"
+    "extern const float anchor3[] = ${${use_case}_ANCHOR_3};"
     )
 
 USER_OPTION(${use_case}_MODEL_TFLITE_PATH "NN models file to be used in the evaluation application. Model files must be in tflite format."

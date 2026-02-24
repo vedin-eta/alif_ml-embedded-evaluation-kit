@@ -159,11 +159,13 @@ using namespace arm::app::object_detection;
         TfLiteTensor* inputTensor = model.GetInputTensor(0);
         TfLiteTensor* outputTensor0 = model.GetOutputTensor(0);
         TfLiteTensor* outputTensor1 = model.GetOutputTensor(1);
+        TfLiteTensor* outputTensor2 = model.GetOutputTensor(2);
 
         info("\n=== MODEL TENSOR INFORMATION ===\n");
         info("Input tensor - type: %d, bytes: %zu\n", inputTensor->type, inputTensor->bytes);
         info("Output tensor 0 - type: %d, bytes: %zu\n", outputTensor0->type, outputTensor0->bytes);
         info("Output tensor 1 - type: %d, bytes: %zu\n", outputTensor1->type, outputTensor1->bytes);
+        info("Output tensor 2 - type: %d, bytes: %zu\n", outputTensor2->type, outputTensor2->bytes);
 
         if (!inputTensor->dims) {
             printf_err("Invalid input tensor dims\n");
@@ -191,6 +193,12 @@ using namespace arm::app::object_detection;
         }
         info("]\n");
 
+        info("Output tensor 2 dims: [");
+        for (int i = 0; i < outputTensor2->dims->size; i++) {
+            info("%d%s", outputTensor2->dims->data[i], i < outputTensor2->dims->size - 1 ? ", " : "");
+        }
+        info("]\n");
+
         TfLiteIntArray* inputShape = model.GetInputShape(0);
 
         const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
@@ -212,19 +220,19 @@ using namespace arm::app::object_detection;
         info("Number of classes: %d\n", numClasses);
         const object_detection::PostProcessParams postProcessParams {
             inputImgRows, inputImgCols, object_detection::originalImageSize,
-            object_detection::anchor1, object_detection::anchor2,
+            object_detection::anchor1, object_detection::anchor2, object_detection::anchor3,
             0.1f, 0.45f, numClasses, 0,
             object_detection::ModelType::SSD
         };
 #else
         const object_detection::PostProcessParams postProcessParams {
             inputImgRows, inputImgCols, object_detection::originalImageSize,
-            object_detection::anchor1, object_detection::anchor2,
+            object_detection::anchor1, object_detection::anchor2, object_detection::anchor3,
             0.5f, 0.45f, 1, 0,
             object_detection::ModelType::YOLO
         };
 #endif
-        DetectorPostProcess postProcess = DetectorPostProcess(outputTensor0, outputTensor1,
+        DetectorPostProcess postProcess = DetectorPostProcess(outputTensor0, outputTensor1, outputTensor2,
                 results, postProcessParams);
 
         /* Ensure there are no results leftover from previous inference when running all. */

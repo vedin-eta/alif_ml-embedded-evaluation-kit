@@ -39,6 +39,7 @@ namespace object_detection {
         int originalImageSize{};
         const float* anchor1;
         const float* anchor2;
+        const float* anchor3;
         float threshold = 0.5f;
         float nms = 0.45f;
         int numClasses = 1;
@@ -77,11 +78,13 @@ namespace object_detection {
          * @brief        Constructor.
          * @param[in]    outputTensor0       Pointer to the TFLite Micro output Tensor at index 0.
          * @param[in]    outputTensor1       Pointer to the TFLite Micro output Tensor at index 1.
+         * @param[in]    outputTensor2       Pointer to the TFLite Micro output Tensor at index 2 (optional, for 3-scale YOLO).
          * @param[out]   results             Vector of detected results.
          * @param[in]    postProcessParams   Struct of various parameters used in post-processing.
          **/
         explicit DetectorPostProcess(TfLiteTensor* outputTensor0,
                                      TfLiteTensor* outputTensor1,
+                                     TfLiteTensor* outputTensor2,
                                      std::vector<object_detection::DetectionResult>& results,
                                      const object_detection::PostProcessParams& postProcessParams);
 
@@ -95,6 +98,7 @@ namespace object_detection {
     private:
         TfLiteTensor* m_outputTensor0;                                   /* Output tensor index 0 */
         TfLiteTensor* m_outputTensor1;                                   /* Output tensor index 1 */
+        TfLiteTensor* m_outputTensor2;                                   /* Output tensor index 2 */
         std::vector<object_detection::DetectionResult>& m_results;       /* Single inference results. */
         const object_detection::PostProcessParams& m_postProcessParams;  /* Post processing param struct. */
         object_detection::Network m_net;                                 /* YOLO network object. */
