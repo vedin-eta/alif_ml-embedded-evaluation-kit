@@ -40,7 +40,7 @@ namespace object_detection {
         const float* anchor1;
         const float* anchor2;
         const float* anchor3;
-        float threshold = 0.5f;
+        float threshold = 0.1f;
         float nms = 0.45f;
         int numClasses = 1;
         int topN = 0;
