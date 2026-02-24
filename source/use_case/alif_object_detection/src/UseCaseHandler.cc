@@ -504,10 +504,10 @@ using namespace arm::app::object_detection;
             float displayH = result.m_h * bboxToDisplayScale;
 
             /* Apply additional LVGL scaling if needed */
-            int frameX = floor(displayX * lvglXScale);
-            int frameY = floor(displayY * lvglYScale);
-            int frameW = ceil(displayW * lvglXScale);
-            int frameH = ceil(displayH * lvglYScale);
+            int frameX = floor(displayX * 1);
+            int frameY = floor(displayY * 1);
+            int frameW = ceil(displayW * 1);
+            int frameH = ceil(displayH * 1);
 
             const char* className = nullptr;
             if (result.m_classIndex >= 0 && result.m_classIndex < numClasses) {
