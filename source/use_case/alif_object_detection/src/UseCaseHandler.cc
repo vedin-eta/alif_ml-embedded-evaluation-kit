@@ -44,21 +44,21 @@
 
 /* Camera and display configuration */
 #define CAMERA_IMAGE_SIZE       512     // Full camera capture size
-#define DISPLAY_IMAGE_SIZE      480     // Display crop size (480x480 centered)
+#define DISPLAY_IMAGE_SIZE      240     // Display crop size (240x240 centered)
 #define MODEL_INPUT_SIZE        256     // Model inference input size (256x256 centered)
 
 /* Display buffer configuration */
 #define LIMAGE_X                DISPLAY_IMAGE_SIZE
 #define LIMAGE_Y                DISPLAY_IMAGE_SIZE
-#define LV_ZOOM                 (1 * 256)  // 1:1 scale (no zoom)
+#define LV_ZOOM                 (2 * 256)  // 2:1 scale (no zoom)
 
 /* Crop offsets from 512x512 camera image */
-#define DISPLAY_CROP_OFFSET     ((CAMERA_IMAGE_SIZE - DISPLAY_IMAGE_SIZE) / 2)  // 16 pixels
-#define MODEL_CROP_OFFSET       ((CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2)    // 128 pixels
+#define DISPLAY_CROP_OFFSET     ((CAMERA_IMAGE_SIZE - DISPLAY_IMAGE_SIZE) / 2)
+#define MODEL_CROP_OFFSET       ((CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2)
 
 /* Bounding box coordinate mapping: model space (256x256) to display space (480x480) */
-#define BBOX_DISPLAY_SCALE      ((float)DISPLAY_IMAGE_SIZE / (float)MODEL_INPUT_SIZE)  // 1.875
-#define BBOX_DISPLAY_OFFSET     ((DISPLAY_IMAGE_SIZE - MODEL_INPUT_SIZE * BBOX_DISPLAY_SCALE) / 2)  // 112 pixels
+#define BBOX_DISPLAY_SCALE      ((float)DISPLAY_IMAGE_SIZE / (float)MODEL_INPUT_SIZE)
+#define BBOX_DISPLAY_OFFSET     ((DISPLAY_IMAGE_SIZE - MODEL_INPUT_SIZE * BBOX_DISPLAY_SCALE) / 2)
 
 namespace {
 lv_style_t boxStyle;
