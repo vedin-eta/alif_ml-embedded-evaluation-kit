@@ -509,15 +509,11 @@ using namespace arm::app::object_detection;
             int frameW = ceil(displayW * lvglXScale);
             int frameH = ceil(displayH * lvglYScale);
 
-#ifdef MODEL_TYPE_SSD
             const char* className = nullptr;
             if (result.m_classIndex >= 0 && result.m_classIndex < numClasses) {
                 className = classLabels[result.m_classIndex];
             }
-            CreateBox(frame, frameX, frameY, frameW, frameH, className);
-#else
-            CreateBox(frame, frameX, frameY, frameW, frameH);
-#endif
+            CreateBox(frame, frameX, frameY, frameH, frameW, className);
         }
     }
 
