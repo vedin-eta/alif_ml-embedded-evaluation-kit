@@ -61,14 +61,12 @@ using arm::app::DetectorPostProcess;
 namespace alif {
 namespace app {
 
-#ifdef MODEL_TYPE_SSD
 /* Animal detection class labels */
 constexpr int numClasses = 10;
 constexpr const char* classLabels[] = {
     "bird", "cat", "dog", "horse", "sheep",
     "cow", "elephant", "bear", "zebra", "giraffe"
 };
-#endif
 
 namespace object_detection {
 using namespace arm::app::object_detection;
@@ -79,15 +77,10 @@ using namespace arm::app::object_detection;
 
         ScreenLayoutInit(lvgl_image, sizeof lvgl_image, LIMAGE_X, LIMAGE_Y, LV_ZOOM);
         uint32_t lv_lock_state = lv_port_lock();
-#ifdef MODEL_TYPE_SSD
+
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Animal Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Animals Detected: 0");
         lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 192x192 center crop");
-#else
-        lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
-        lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 192x192 center crop");
-#endif
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
@@ -365,7 +358,9 @@ using namespace arm::app::object_detection;
                 return false;
             }
             info("Post-processing completed\n");
-
+            lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Animals Detected: %i", results.size());
+            info("\n=== DETECTION RESULTS ===\n");
+            info("Number of animals detected: %zu\n", results.size());
 #if SHOW_INF_TIME
             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
             lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "Inference time: %.3f ms", (double)inf_prof / SystemCoreClock * 1000);
@@ -374,10 +369,6 @@ using namespace arm::app::object_detection;
 #endif
 
 #ifdef MODEL_TYPE_SSD
-            lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Animals Detected: %i", results.size());
-            info("\n=== DETECTION RESULTS ===\n");
-            info("Number of animals detected: %zu\n", results.size());
-
             // Print details for top 2 detections
             size_t numToPrint = results.size() < 2 ? results.size() : 2;
             if (numToPrint > 0) {
@@ -399,10 +390,6 @@ using namespace arm::app::object_detection;
                 info("No detections above confidence threshold\n");
             }
 #else
-            lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
-            info("\n=== DETECTION RESULTS ===\n");
-            info("Number of faces detected: %zu\n", results.size());
-
             // Print details for top 2 detections
             size_t numToPrint = results.size() < 2 ? results.size() : 2;
             if (numToPrint > 0) {
