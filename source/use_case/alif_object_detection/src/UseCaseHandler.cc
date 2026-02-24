@@ -260,9 +260,9 @@ using namespace arm::app::object_detection;
         info("Full frame captured successfully, size: %u bytes (%dx%d RGB)\n",
              capturedFrameSize, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
 
-        /* Allocate buffers for two separate crops */
-        static uint8_t displayCrop[DISPLAY_IMAGE_SIZE * DISPLAY_IMAGE_SIZE * 3];  // 480x480x3 for display
-        static uint8_t modelCrop[MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3];        // 256x256x3 for inference
+        /* Allocate buffers for two separate crops - place in same memory section as lvgl_image to avoid DTCM overflow */
+        static uint8_t displayCrop[DISPLAY_IMAGE_SIZE * DISPLAY_IMAGE_SIZE * 3] __attribute__((section(".bss.lcd_image_buf")));
+        static uint8_t modelCrop[MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3] __attribute__((section(".bss.lcd_image_buf")));
 
         /* Extract Crop 1: 480x480 for display (offset 16,16 from 512x512) */
         info("\n=== EXTRACTING DISPLAY CROP ===\n");
