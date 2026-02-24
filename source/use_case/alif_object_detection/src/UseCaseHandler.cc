@@ -523,8 +523,8 @@ using namespace arm::app::object_detection;
                  displayX, displayY, displayW, displayH);
 
             /* Apply additional LVGL scaling if needed */
-            int frameX = floor(displayX * lvglXScale);
-            int frameY = floor(displayY * lvglYScale);
+            int frameX = floor(displayX * lvglXScale) + 120;
+            int frameY = floor(displayY * lvglYScale) + 120;
             int frameW = ceil(displayW * lvglXScale);
             int frameH = ceil(displayH * lvglYScale);
 
