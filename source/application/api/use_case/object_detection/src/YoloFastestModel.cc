@@ -32,9 +32,11 @@ bool arm::app::YoloFastestModel::EnlistOperations()
     this->m_opResolver.AddResizeNearestNeighbor();
     /*These are needed for UT to work, not needed on FVP */
     this->m_opResolver.AddPad();
-    this->m_opResolver.AddMaxPool2D();
     this->m_opResolver.AddConcatenation();
 #endif
+
+    /* MAX_POOL_2D is needed for some YOLO models even with NPU */
+    this->m_opResolver.AddMaxPool2D();
 
     if (kTfLiteOk == this->m_opResolver.AddEthosU()) {
         info("Added %s support to op resolver\n",
