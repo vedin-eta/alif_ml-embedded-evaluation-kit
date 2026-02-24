@@ -42,10 +42,23 @@
 #include "lv_port.h"
 #include "lv_paint_utils.h"
 
-#define LIMAGE_X        480
-#define LIMAGE_Y        480
-#define LV_ZOOM         (1 * 256)
-#define CAMERA_IMAGE_SIZE 512
+/* Camera and display configuration */
+#define CAMERA_IMAGE_SIZE       512     // Full camera capture size
+#define DISPLAY_IMAGE_SIZE      480     // Display crop size (480x480 centered)
+#define MODEL_INPUT_SIZE        256     // Model inference input size (256x256 centered)
+
+/* Display buffer configuration */
+#define LIMAGE_X                DISPLAY_IMAGE_SIZE
+#define LIMAGE_Y                DISPLAY_IMAGE_SIZE
+#define LV_ZOOM                 (1 * 256)  // 1:1 scale (no zoom)
+
+/* Crop offsets from 512x512 camera image */
+#define DISPLAY_CROP_OFFSET     ((CAMERA_IMAGE_SIZE - DISPLAY_IMAGE_SIZE) / 2)  // 16 pixels
+#define MODEL_CROP_OFFSET       ((CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2)    // 128 pixels
+
+/* Bounding box coordinate mapping: model space (256x256) to display space (480x480) */
+#define BBOX_DISPLAY_SCALE      ((float)DISPLAY_IMAGE_SIZE / (float)MODEL_INPUT_SIZE)  // 1.875
+#define BBOX_DISPLAY_OFFSET     ((DISPLAY_IMAGE_SIZE - MODEL_INPUT_SIZE * BBOX_DISPLAY_SCALE) / 2)  // 112 pixels
 
 namespace {
 lv_style_t boxStyle;
@@ -115,6 +128,10 @@ using namespace arm::app::object_detection;
             printf_err("Failed to configure camera.\n");
             return false;
         }
+
+        info("DEBUG: Camera configured for %dx%d RGB888\n", CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
+        info("DEBUG: Display crop: %dx%d (offset %d)\n", DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE, DISPLAY_CROP_OFFSET);
+        info("DEBUG: Model input crop: %dx%d (offset %d)\n", MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, MODEL_CROP_OFFSET);
 
         return true;
     }
@@ -240,24 +257,43 @@ using namespace arm::app::object_detection;
             printf_err("hal_camera_get_captured_frame failed");
             return false;
         }
+        info("Full frame captured successfully, size: %u bytes (%dx%d RGB)\n",
+             capturedFrameSize, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
 
-        const int crop_start_x = (CAMERA_IMAGE_SIZE - inputImgCols) / 2;
-        const int crop_start_y = (CAMERA_IMAGE_SIZE - inputImgRows) / 2;
+        /* Allocate buffers for two separate crops */
+        static uint8_t displayCrop[DISPLAY_IMAGE_SIZE * DISPLAY_IMAGE_SIZE * 3];  // 480x480x3 for display
+        static uint8_t modelCrop[MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3];        // 256x256x3 for inference
 
-        info("Extracting center crop: %dx%d from offset (%d, %d)\n",
-             inputImgCols, inputImgRows, crop_start_x, crop_start_y);
+        /* Extract Crop 1: 480x480 for display (offset 16,16 from 512x512) */
+        info("\n=== EXTRACTING DISPLAY CROP ===\n");
+        info("Display crop: %dx%d from offset (%d, %d)\n",
+             DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE, DISPLAY_CROP_OFFSET, DISPLAY_CROP_OFFSET);
+        for (int y = 0; y < DISPLAY_IMAGE_SIZE; y++) {
+            const uint8_t* src_row = fullImage + ((DISPLAY_CROP_OFFSET + y) * CAMERA_IMAGE_SIZE + DISPLAY_CROP_OFFSET) * 3;
+            uint8_t* dst_row = displayCrop + y * DISPLAY_IMAGE_SIZE * 3;
+            memcpy(dst_row, src_row, DISPLAY_IMAGE_SIZE * 3);
+        }
+
+        /* Extract Crop 2: 256x256 for model inference (offset 128,128 from 512x512) */
+        info("\n=== EXTRACTING MODEL INPUT CROP ===\n");
+        info("Model crop: %dx%d from offset (%d, %d)\n",
+             MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, MODEL_CROP_OFFSET, MODEL_CROP_OFFSET);
+        for (int y = 0; y < MODEL_INPUT_SIZE; y++) {
+            const uint8_t* src_row = fullImage + ((MODEL_CROP_OFFSET + y) * CAMERA_IMAGE_SIZE + MODEL_CROP_OFFSET) * 3;
+            uint8_t* dst_row = modelCrop + y * MODEL_INPUT_SIZE * 3;
+            memcpy(dst_row, src_row, MODEL_INPUT_SIZE * 3);
+        }
 
         {
             ScopedLVGLLock lv_lock;
 
             info("\n=== LCD DISPLAY ===\n");
-            info("Preparing to display cropped image on LCD...\n");
-            /* Display the cropped image on the LCD. */
-            write_to_lvgl_buf(inputImgCols, inputImgRows,
-                            fullImage, &lvgl_image[0][0]);
+            info("Displaying %dx%d image on LCD...\n", DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE);
+            /* Display the 480x480 crop on the LCD */
+            write_to_lvgl_buf(DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE,
+                            displayCrop, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
-            info("Cropped image displayed on LCD\n");
-            info("Run requested - proceeding with inference\n");
+            info("Display updated\n");
 
             lv_led_on(ScreenLayoutLEDObject());
 
@@ -269,9 +305,9 @@ using namespace arm::app::object_detection;
 
             /* Run the pre-processing, inference and post-processing. */
             info("\n=== PRE-PROCESSING ===\n");
-            info("Starting pre-processing (RGB input from cropped image)...\n");
-            info("Input tensor bytes to copy: %zu\n", copySz);
-            if (!preProcess.DoPreProcess(fullImage, copySz)) {
+            info("Starting pre-processing with %dx%d model crop...\n", MODEL_INPUT_SIZE, MODEL_INPUT_SIZE);
+            info("Input tensor bytes: %zu\n", copySz);
+            if (!preProcess.DoPreProcess(modelCrop, copySz)) {
                 printf_err("Pre-processing failed.");
                 return false;
             }
@@ -443,32 +479,49 @@ using namespace arm::app::object_detection;
     }
 
     static void DrawDetectionBoxes(const std::vector<object_detection::DetectionResult>& results,
-                                   int imgInputCols, int imgInputRows)
+                                   int imgInputCols __attribute__((unused)),
+                                   int imgInputRows __attribute__((unused)))
     {
         lv_obj_t *frame = ScreenLayoutImageHolderObject();
-        float xScale = (float) lv_obj_get_content_width(frame) / imgInputCols;
-        float yScale = (float) lv_obj_get_content_height(frame) / imgInputRows;
+
+        /* Bounding boxes come in model space (256x256), need to map to display space (480x480)
+         * The model inference was done on a 256x256 center crop
+         * The display shows a 480x480 center crop
+         * Both crops are centered on the same 512x512 camera image
+         * Therefore: bbox needs to be scaled by 480/256 = 1.875 and offset by (480-256*1.875)/2 = 0
+         * Actually, since both are centered, we just need to scale, no offset needed!
+         */
+        const float bboxToDisplayScale = BBOX_DISPLAY_SCALE;  // 480/256 = 1.875
+
+        /* Additional scaling from LVGL if frame is zoomed */
+        float frameWidth = (float) lv_obj_get_content_width(frame);
+        float frameHeight = (float) lv_obj_get_content_height(frame);
+        float lvglXScale = frameWidth / DISPLAY_IMAGE_SIZE;
+        float lvglYScale = frameHeight / DISPLAY_IMAGE_SIZE;
 
         DeleteBoxes(frame);
 
         for (const auto& result: results) {
+            /* Scale bbox from model space (256x256) to display space (480x480) */
+            float displayX = result.m_x0 * bboxToDisplayScale;
+            float displayY = result.m_y0 * bboxToDisplayScale;
+            float displayW = result.m_w * bboxToDisplayScale;
+            float displayH = result.m_h * bboxToDisplayScale;
+
+            /* Apply additional LVGL scaling if needed */
+            int frameX = floor(displayX * lvglXScale);
+            int frameY = floor(displayY * lvglYScale);
+            int frameW = ceil(displayW * lvglXScale);
+            int frameH = ceil(displayH * lvglYScale);
+
 #ifdef MODEL_TYPE_SSD
             const char* className = nullptr;
             if (result.m_classIndex >= 0 && result.m_classIndex < numClasses) {
                 className = classLabels[result.m_classIndex];
             }
-            CreateBox(frame,
-                      floor(result.m_x0 * xScale),
-                      floor(result.m_y0 * yScale),
-                      ceil(result.m_w * xScale),
-                      ceil(result.m_h * yScale),
-                      className);
+            CreateBox(frame, frameX, frameY, frameW, frameH, className);
 #else
-            CreateBox(frame,
-                      floor(result.m_x0 * xScale),
-                      floor(result.m_y0 * yScale),
-                      ceil(result.m_w * xScale),
-                      ceil(result.m_h * yScale));
+            CreateBox(frame, frameX, frameY, frameW, frameH);
 #endif
         }
     }
