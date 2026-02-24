@@ -52,7 +52,7 @@ USER_OPTION(${use_case}_ANCHOR_3 "Third anchor array for 8x8 grid - large object
     STRING)
 
 USER_OPTION(${use_case}_ACTIVATION_BUF_SZ "Activation buffer size for the chosen model"
-    0x00200000
+    0x00100000
     STRING)
 
 USER_OPTION(${use_case}_SHOW_INF_TIME "Show inference time"
