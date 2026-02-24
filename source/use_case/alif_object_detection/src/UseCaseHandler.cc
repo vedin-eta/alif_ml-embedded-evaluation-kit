@@ -477,6 +477,9 @@ using namespace arm::app::object_detection;
                                    int imgInputCols __attribute__((unused)),
                                    int imgInputRows __attribute__((unused)))
     {
+        info("\n=== DrawDetectionBoxes ===\n");
+        info("Number of results to draw: %zu\n", results.size());
+
         lv_obj_t *frame = ScreenLayoutImageHolderObject();
 
         /* Bounding boxes come in model space (256x256), need to map to display space (480x480)
@@ -488,33 +491,55 @@ using namespace arm::app::object_detection;
          */
         const float bboxToDisplayScale = BBOX_DISPLAY_SCALE;  // 480/256 = 1.875
 
+        info("Bbox scaling: model space (256x256) -> display space (480x480)\n");
+        info("  bboxToDisplayScale = %.3f\n", bboxToDisplayScale);
+
         /* Additional scaling from LVGL if frame is zoomed */
         float frameWidth = (float) lv_obj_get_content_width(frame);
         float frameHeight = (float) lv_obj_get_content_height(frame);
         float lvglXScale = frameWidth / DISPLAY_IMAGE_SIZE;
         float lvglYScale = frameHeight / DISPLAY_IMAGE_SIZE;
 
+        info("LVGL frame dimensions: %.1f x %.1f\n", frameWidth, frameHeight);
+        info("  lvglXScale = %.3f, lvglYScale = %.3f\n", lvglXScale, lvglYScale);
+
         DeleteBoxes(frame);
 
+        int box_num = 0;
         for (const auto& result: results) {
+            box_num++;
+
+            info("\nBox %d (class=%d, conf=%.3f):\n", box_num, result.m_classIndex, result.m_normalisedVal);
+            info("  Model space (256x256): x0=%d y0=%d w=%d h=%d\n",
+                 result.m_x0, result.m_y0, result.m_w, result.m_h);
+
             /* Scale bbox from model space (256x256) to display space (480x480) */
             float displayX = result.m_x0 * bboxToDisplayScale;
             float displayY = result.m_y0 * bboxToDisplayScale;
             float displayW = result.m_w * bboxToDisplayScale;
             float displayH = result.m_h * bboxToDisplayScale;
 
+            info("  Display space (480x480): x=%.1f y=%.1f w=%.1f h=%.1f\n",
+                 displayX, displayY, displayW, displayH);
+
             /* Apply additional LVGL scaling if needed */
-            int frameX = floor(displayX * 1);
-            int frameY = floor(displayY * 1);
-            int frameW = ceil(displayW * 1);
-            int frameH = ceil(displayH * 1);
+            int frameX = floor(displayX * lvglXScale);
+            int frameY = floor(displayY * lvglYScale);
+            int frameW = ceil(displayW * lvglXScale);
+            int frameH = ceil(displayH * lvglYScale);
+
+            info("  Frame coords: x=%d y=%d w=%d h=%d\n", frameX, frameY, frameW, frameH);
 
             const char* className = nullptr;
             if (result.m_classIndex >= 0 && result.m_classIndex < numClasses) {
                 className = classLabels[result.m_classIndex];
+                info("  Class: %s\n", className);
             }
-            CreateBox(frame, frameX, frameY, frameH, frameW, className);
+
+            CreateBox(frame, frameX, frameY, frameW, frameH, className);
         }
+
+        info("=== DrawDetectionBoxes complete ===\n\n");
     }
 
 } /* namespace app */
