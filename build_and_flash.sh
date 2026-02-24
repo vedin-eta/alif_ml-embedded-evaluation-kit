@@ -13,6 +13,8 @@ FLASH_CONFIG_PATH=$SETOOLS_ROOT/build/config/alif_ew_demo.json
 
 cd $BUILD_DIR
 
+git pull
+
 echo "=== Building project ==="
 cmake -DTARGET_PLATFORM=alif \
  -DTARGET_SUBSYSTEM=RTSS-HP \
