@@ -48,5 +48,35 @@ namespace app {
         return true;
     }
 
+    bool DetectorPreProcess::DoPreProcessWithCrop(const void* data,
+                                                   int srcWidth, int srcHeight,
+                                                   int cropOffsetX, int cropOffsetY,
+                                                   int cropWidth, int cropHeight,
+                                                   int channels) {
+        if (data == nullptr) {
+            printf_err("Data pointer is null");
+            return false;
+        }
+
+        auto input = static_cast<const uint8_t*>(data);
+        uint8_t* tensorData = this->m_inputTensor->data.uint8;
+
+        /* Extract crop from source image row by row */
+        for (int y = 0; y < cropHeight; y++) {
+            const uint8_t* srcRow = input + ((cropOffsetY + y) * srcWidth + cropOffsetX) * channels;
+            uint8_t* dstRow = tensorData + y * cropWidth * channels;
+            std::memcpy(dstRow, srcRow, cropWidth * channels);
+        }
+
+        debug("Input tensor populated with crop (%dx%d from %dx%d at offset %d,%d)\n",
+              cropWidth, cropHeight, srcWidth, srcHeight, cropOffsetX, cropOffsetY);
+
+        if (this->m_convertToInt8) {
+            image::ConvertImgToInt8(this->m_inputTensor->data.data, this->m_inputTensor->bytes);
+        }
+
+        return true;
+    }
+
 } /* namespace app */
 } /* namespace arm */

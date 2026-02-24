@@ -260,11 +260,10 @@ using namespace arm::app::object_detection;
         info("Full frame captured successfully, size: %u bytes (%dx%d RGB)\n",
              capturedFrameSize, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
 
-        /* Allocate buffers for two separate crops - place in same memory section as lvgl_image to avoid DTCM overflow */
+        /* Allocate buffer for display crop only - place in external memory to avoid DTCM overflow */
         static uint8_t displayCrop[DISPLAY_IMAGE_SIZE * DISPLAY_IMAGE_SIZE * 3] __attribute__((section(".bss.lcd_image_buf")));
-        static uint8_t modelCrop[MODEL_INPUT_SIZE * MODEL_INPUT_SIZE * 3] __attribute__((section(".bss.lcd_image_buf")));
 
-        /* Extract Crop 1: 480x480 for display (offset 16,16 from 512x512) */
+        /* Extract 480x480 display crop (offset 16,16 from 512x512) */
         info("\n=== EXTRACTING DISPLAY CROP ===\n");
         info("Display crop: %dx%d from offset (%d, %d)\n",
              DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE, DISPLAY_CROP_OFFSET, DISPLAY_CROP_OFFSET);
@@ -274,15 +273,10 @@ using namespace arm::app::object_detection;
             memcpy(dst_row, src_row, DISPLAY_IMAGE_SIZE * 3);
         }
 
-        /* Extract Crop 2: 256x256 for model inference (offset 128,128 from 512x512) */
-        info("\n=== EXTRACTING MODEL INPUT CROP ===\n");
-        info("Model crop: %dx%d from offset (%d, %d)\n",
-             MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, MODEL_CROP_OFFSET, MODEL_CROP_OFFSET);
-        for (int y = 0; y < MODEL_INPUT_SIZE; y++) {
-            const uint8_t* src_row = fullImage + ((MODEL_CROP_OFFSET + y) * CAMERA_IMAGE_SIZE + MODEL_CROP_OFFSET) * 3;
-            uint8_t* dst_row = modelCrop + y * MODEL_INPUT_SIZE * 3;
-            memcpy(dst_row, src_row, MODEL_INPUT_SIZE * 3);
-        }
+        /* Model crop (256x256 from offset 128,128) will be extracted on-the-fly during preprocessing */
+        info("\n=== MODEL INPUT ===\n");
+        info("Model will process 256x256 center crop from 512x512 image (offset %d,%d)\n",
+             MODEL_CROP_OFFSET, MODEL_CROP_OFFSET);
 
         {
             ScopedLVGLLock lv_lock;
@@ -297,21 +291,22 @@ using namespace arm::app::object_detection;
 
             lv_led_on(ScreenLayoutLEDObject());
 
-            const size_t copySz = inputTensor->bytes;
-
 #if SHOW_INF_TIME
         uint32_t inf_prof = Get_SysTick_Cycle_Count32();
 #endif
 
             /* Run the pre-processing, inference and post-processing. */
             info("\n=== PRE-PROCESSING ===\n");
-            info("Starting pre-processing with %dx%d model crop...\n", MODEL_INPUT_SIZE, MODEL_INPUT_SIZE);
-            info("Input tensor bytes: %zu\n", copySz);
-            if (!preProcess.DoPreProcess(modelCrop, copySz)) {
+            info("Starting pre-processing with on-the-fly crop from 512x512 to 256x256...\n");
+            if (!preProcess.DoPreProcessWithCrop(fullImage,
+                                                 CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE,
+                                                 MODEL_CROP_OFFSET, MODEL_CROP_OFFSET,
+                                                 MODEL_INPUT_SIZE, MODEL_INPUT_SIZE,
+                                                 3)) {
                 printf_err("Pre-processing failed.");
                 return false;
             }
-            info("Pre-processing completed\n");
+            info("Pre-processing completed (cropped on-the-fly, no additional RAM used)\n");
 
             /* Run inference over this image. */
             info("\n=== MODEL INFERENCE ===\n");

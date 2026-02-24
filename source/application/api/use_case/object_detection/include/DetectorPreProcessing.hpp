@@ -48,6 +48,24 @@ namespace app {
          **/
         bool DoPreProcess(const void* input, size_t inputSize) override;
 
+        /**
+         * @brief       Perform pre-processing with cropping from a larger source image
+         * @param[in]   input           Pointer to the source image data.
+         * @param[in]   srcWidth        Width of the source image.
+         * @param[in]   srcHeight       Height of the source image.
+         * @param[in]   cropOffsetX     X offset for crop in source image.
+         * @param[in]   cropOffsetY     Y offset for crop in source image.
+         * @param[in]   cropWidth       Width of the crop (must match tensor width).
+         * @param[in]   cropHeight      Height of the crop (must match tensor height).
+         * @param[in]   channels        Number of channels (3 for RGB).
+         * @return      true if successful, false otherwise.
+         **/
+        bool DoPreProcessWithCrop(const void* input,
+                                  int srcWidth, int srcHeight,
+                                  int cropOffsetX, int cropOffsetY,
+                                  int cropWidth, int cropHeight,
+                                  int channels);
+
     private:
         TfLiteTensor* m_inputTensor;
         bool m_rgb2Gray;
