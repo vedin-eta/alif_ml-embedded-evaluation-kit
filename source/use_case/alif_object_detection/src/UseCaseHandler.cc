@@ -536,7 +536,7 @@ using namespace arm::app::object_detection;
                 info("  Class: %s\n", className);
             }
 
-            CreateBox(frame, frameX, frameY, frameW, frameH, className);
+            CreateBox(frame, frameX, frameY, frameH, frameW, className);
         }
 
         info("=== DrawDetectionBoxes complete ===\n\n");
