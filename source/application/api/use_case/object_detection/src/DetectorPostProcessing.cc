@@ -82,20 +82,52 @@ namespace app {
 
 bool DetectorPostProcess::DoPostProcess()
 {
+    info("\n=== DoPostProcess ENTRY ===\n");
+    info("Model type: %s\n", m_postProcessParams.modelType == object_detection::ModelType::SSD ? "SSD" : "YOLO");
+
     /* Check model type and use appropriate post-processing */
     if (m_postProcessParams.modelType == object_detection::ModelType::SSD) {
+        info("Entering SSD post-processing path\n");
         return ProcessSSD();
     }
 
     /* YOLO post-processing */
+    info("Entering YOLO post-processing path\n");
+    info("YOLO: originalImageSize=%d x %d\n", m_postProcessParams.originalImageSize, m_postProcessParams.originalImageSize);
+    info("YOLO: threshold=%.4f, nms=%.4f, numClasses=%d\n",
+         m_postProcessParams.threshold, m_postProcessParams.nms, this->m_net.numClasses);
+    info("YOLO: Number of branches=%zu\n", this->m_net.branches.size());
+
+    for (size_t i = 0; i < this->m_net.branches.size(); ++i) {
+        info("YOLO:   Branch %zu: resolution=%d, numBox=%d\n",
+             i, this->m_net.branches[i].resolution, this->m_net.branches[i].numBox);
+    }
+
     int originalImageWidth  = m_postProcessParams.originalImageSize;
     int originalImageHeight = m_postProcessParams.originalImageSize;
 
+    info("YOLO: Creating detections list (std::forward_list)\n");
     std::forward_list<image::Detection> detections;
+
+    info("YOLO: Calling GetNetworkBoxes...\n");
     GetNetworkBoxes(this->m_net, originalImageWidth, originalImageHeight, m_postProcessParams.threshold, detections);
 
+    /* Count detections */
+    int detection_count = 0;
+    for (auto& it: detections) { detection_count++; }
+    info("YOLO: GetNetworkBoxes found %d detections above threshold\n", detection_count);
+
     /* Do nms */
+    info("YOLO: Applying NMS (threshold=%.4f)...\n", this->m_postProcessParams.nms);
     CalculateNMS(detections, this->m_net.numClasses, this->m_postProcessParams.nms);
+
+    /* Count after NMS */
+    detection_count = 0;
+    for (auto& it: detections) { detection_count++; }
+    info("YOLO: After NMS: %d detections remain\n", detection_count);
+
+    info("YOLO: Converting detections to results vector...\n");
+    int result_count = 0;
 
     for (auto& it: detections) {
         float xMin = it.bbox.x - it.bbox.w / 2.0f;
@@ -133,9 +165,13 @@ bool DetectorPostProcess::DoPostProcess()
                 tmpResult.m_classIndex = j;
 
                 this->m_results.push_back(tmpResult);
+                result_count++;
             }
         }
     }
+
+    info("YOLO: Post-processing complete. Total results: %d\n", result_count);
+    info("=== DoPostProcess EXIT ===\n\n");
     return true;
 }
 
@@ -161,19 +197,29 @@ void DetectorPostProcess::GetNetworkBoxes(
         float threshold,
         std::forward_list<image::Detection>& detections)
 {
+    info("GetNetworkBoxes: START\n");
+    info("  imageWidth=%d, imageHeight=%d, threshold=%.4f\n", imageWidth, imageHeight, threshold);
+
     int numClasses = net.numClasses;
     int num = 0;
     auto det_objectness_comparator = [](image::Detection& pa, image::Detection& pb) {
         return pa.objectness < pb.objectness;
     };
     for (size_t i = 0; i < net.branches.size(); ++i) {
+        info("  Processing branch %zu: resolution=%d, numBox=%d\n",
+             i, net.branches[i].resolution, net.branches[i].numBox);
+
         int height   = net.branches[i].resolution;
         int width    = net.branches[i].resolution;
         int channel  = net.branches[i].numBox*(5+numClasses);
 
+        int boxes_checked = 0;
+        int boxes_above_threshold = 0;
+
         for (int h = 0; h < net.branches[i].resolution; h++) {
             for (int w = 0; w < net.branches[i].resolution; w++) {
                 for (int anc = 0; anc < net.branches[i].numBox; anc++) {
+                    boxes_checked++;
 
                     /* Objectness score */
                     int bbox_obj_offset = h * width * channel + w * channel + anc * (numClasses + 5) + 4;
@@ -183,6 +229,12 @@ void DetectorPostProcess::GetNetworkBoxes(
                             ) * net.branches[i].scale);
 
                     if(objectness > threshold) {
+                        boxes_above_threshold++;
+
+                        if (boxes_above_threshold <= 5) {
+                            info("    Box %d passed threshold: objectness=%.4f\n", boxes_above_threshold, objectness);
+                        }
+
                         image::Detection det;
                         det.objectness = objectness;
                         /* Get bbox prediction data for each anchor, each feature point */
@@ -212,12 +264,20 @@ void DetectorPostProcess::GetNetworkBoxes(
                         det.bbox.w = std::exp(det.bbox.w) * net.branches[i].anchor[anc*2] / net.inputWidth;
                         det.bbox.h = std::exp(det.bbox.h) * net.branches[i].anchor[anc*2+1] / net.inputHeight;
 
+                        if (boxes_above_threshold <= 5) {
+                            info("    Allocating prob vector for %d classes\n", numClasses);
+                        }
+
                         for (int s = 0; s < numClasses; s++) {
                             float sig = math::MathUtils::SigmoidF32(
                                     (static_cast<float>(net.branches[i].modelOutput[bbox_scores_offset + s]) -
                                     net.branches[i].zeroPoint) * net.branches[i].scale
                                     ) * objectness;
-                            det.prob.emplace_back((sig > threshold) ? sig : 0);
+                            det.prob.emplace_back((sig > threshold) ? sig : 0);  // HEAP ALLOCATION HERE
+                        }
+
+                        if (boxes_above_threshold <= 5) {
+                            info("    Prob vector allocated successfully\n");
                         }
 
                         /* Correct_YOLO_boxes */
@@ -240,7 +300,13 @@ void DetectorPostProcess::GetNetworkBoxes(
                 }
             }
         }
+
+        info("  Branch %zu complete: checked=%d boxes, above_threshold=%d\n",
+             i, boxes_checked, boxes_above_threshold);
     }
+
+    info("GetNetworkBoxes: COMPLETE (total detections added=%d)\n", num);
+
     if(num > net.topN)
         num -=1;
 }
