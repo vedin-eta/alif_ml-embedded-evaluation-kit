@@ -163,8 +163,7 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
         // default style, but these state styles have to be put
         // directly onto the labels so that they check the
         // label's own state. If inherited, they check the parent's.
-        if (lblIdx == 0) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_32, 0);
-        else if (lblIdx == 1) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_16, 0);
+        if (lblIdx <= 1 ) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_16, 0);
         else lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, 0);
         y += 25 * DISP_SCALE;
         lblIdx++;
