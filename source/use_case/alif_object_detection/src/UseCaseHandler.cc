@@ -100,7 +100,7 @@ using namespace arm::app::object_detection;
         uint32_t lv_lock_state = lv_port_lock();
 
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "No animals detected");
-        lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Predict time: %.2f ms, energy per inference: %.2s mJ", PREDICT_TIME_MS, ENERGY_MJ);
+        lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Predict time: %.2f ms, energy per inference: %.2f mJ", PREDICT_TIME_MS, ENERGY_MJ);
         lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "RAM usage: %.2f KB, NVME usage: %.2f KB", MODEL_RAM_KB, MODEL_FLASH_KB);
 
         lv_style_init(&boxStyle);
