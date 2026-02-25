@@ -92,8 +92,7 @@ using namespace arm::app::object_detection;
         ScreenLayoutInit(lvgl_image, sizeof lvgl_image, LIMAGE_X, LIMAGE_Y, LV_ZOOM);
         uint32_t lv_lock_state = lv_port_lock();
 
-        lv_label_set_text_static(ScreenLayoutHeaderObject(), "Animal Detection");
-        lv_label_set_text_static(ScreenLayoutLabelObject(0), "Animals Detected: 0");
+        lv_label_set_text_static(ScreenLayoutHeaderObject(), "No animals detected");
         lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 256x256 center crop");
 
         lv_style_init(&boxStyle);
@@ -343,7 +342,15 @@ using namespace arm::app::object_detection;
                 return false;
             }
             info("Post-processing completed\n");
-            lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Animals Detected: %i", results.size());
+            if (results.empty()) {
+                lv_label_set_text(ScreenLayoutHeaderObject(), "No animals detected");
+            } else {
+                const char* className = "unknown";
+                if (results[0].m_classIndex >= 0 && results[0].m_classIndex < numClasses) {
+                    className = classLabels[results[0].m_classIndex];
+                }
+                lv_label_set_text_fmt(ScreenLayoutHeaderObject(), "%s detected", className);
+            }
             info("\n=== DETECTION RESULTS ===\n");
             info("Number of animals detected: %zu\n", results.size());
 #if SHOW_INF_TIME
