@@ -78,8 +78,8 @@ namespace app {
 /* Animal detection class labels */
 constexpr int numClasses = 10;
 constexpr const char* classLabels[] = {
-    "bird", "cat", "dog", "horse", "sheep",
-    "cow", "elephant", "bear", "zebra", "giraffe"
+    "Bird", "Cat", "Dog", "Horse", "Sheep",
+    "Cow", "Elephant", "Bear", "Zebra", "Giraffe"
 };
 
 namespace object_detection {
