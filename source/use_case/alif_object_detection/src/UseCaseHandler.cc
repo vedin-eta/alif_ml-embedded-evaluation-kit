@@ -60,6 +60,13 @@
 #define BBOX_DISPLAY_SCALE      ((float)DISPLAY_IMAGE_SIZE / (float)MODEL_INPUT_SIZE)
 #define BBOX_DISPLAY_OFFSET     ((DISPLAY_IMAGE_SIZE - MODEL_INPUT_SIZE * BBOX_DISPLAY_SCALE) / 2)
 
+// Model static data
+#define PREDICT_TIME_MS 9.46f
+#define ENERGY_MJ 1.16f
+#define MODEL_RAM_KB 897.34f
+#define MODEL_FLASH_KB 738.34f
+
+
 namespace {
 lv_style_t boxStyle;
 lvgl_pixel_t lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section(".bss.lcd_image_buf")));                      // 196x196x2 = 76,832
@@ -93,7 +100,8 @@ using namespace arm::app::object_detection;
         uint32_t lv_lock_state = lv_port_lock();
 
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "No animals detected");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "512x512 -> 256x256 center crop");
+        lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Predict time: %.2f ms, energy per inference: %.2s mJ", PREDICT_TIME_MS, ENERGY_MJ);
+        lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "RAM usage: %.2f KB, NVME usage: %.2f KB", MODEL_RAM_KB, MODEL_FLASH_KB);
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
