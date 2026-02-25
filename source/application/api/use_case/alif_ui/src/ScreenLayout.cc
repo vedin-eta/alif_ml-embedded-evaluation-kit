@@ -153,17 +153,21 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
 
     /* And labels for results */
     int y = 25 * DISP_SCALE;
+    int lblIdx = 0;
     for (auto &lbl : labelResult) {
         lbl = lv_label_create(resultHolder);
         lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         lv_obj_align(lbl, LV_ALIGN_TOP_MID, 0, y);
         lv_label_set_text(lbl, "");
-        y += 25 * DISP_SCALE;
         // Text styles can be inherited, and that works for the
         // default style, but these state styles have to be put
         // directly onto the labels so that they check the
         // label's own state. If inherited, they check the parent's.
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_16, 0);
+        if (lblIdx == 0) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_32, 0);
+        else if (lblIdx == 1) lv_obj_set_style_text_font(lbl, &lv_font_montserrat_16, 0);
+        else lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, 0);
+        y += 25 * DISP_SCALE;
+        lblIdx++;
     }
 
     /* Teeny label for time indicator */
