@@ -163,7 +163,7 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
         // default style, but these state styles have to be put
         // directly onto the labels so that they check the
         // label's own state. If inherited, they check the parent's.
-        lv_obj_add_style(lbl, &weak, LV_PART_MAIN);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, 0);
     }
 
     /* Teeny label for time indicator */
