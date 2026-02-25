@@ -220,23 +220,17 @@ using namespace arm::app::object_detection;
 
         std::vector<object_detection::DetectionResult> results;
 #ifdef MODEL_TYPE_SSD
-        info("\n=== SSD POST-PROCESSING PARAMETERS ===\n");
-        info("Network input: %dx%d\n", inputImgRows, inputImgCols);
-        info("Original image size: %d\n", object_detection::originalImageSize);
-        info("Confidence threshold: 0.5\n");
-        info("NMS threshold: 0.45\n");
-        info("Number of classes: %d\n", numClasses);
         const object_detection::PostProcessParams postProcessParams {
             inputImgRows, inputImgCols, object_detection::originalImageSize,
             object_detection::anchor1, object_detection::anchor2, object_detection::anchor3,
-            0.1f, 0.45f, numClasses, 0,
+            0.1f, 0.2f, numClasses, 0,
             object_detection::ModelType::SSD
         };
 #else
         const object_detection::PostProcessParams postProcessParams {
             inputImgRows, inputImgCols, object_detection::originalImageSize,
             object_detection::anchor1, object_detection::anchor2, object_detection::anchor3,
-            0.45f, 0.45f, numClasses, 10,
+            0.45f, 0.2f, numClasses, 10,
             object_detection::ModelType::YOLO
         };
 #endif
