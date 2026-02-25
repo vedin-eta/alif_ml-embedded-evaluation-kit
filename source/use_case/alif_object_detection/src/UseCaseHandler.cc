@@ -300,7 +300,6 @@ using namespace arm::app::object_detection;
                 printf_err("Pre-processing failed.");
                 return false;
             }
-            info("Pre-processing completed (cropped on-the-fly, no additional RAM used)\n");
 
             /* Run inference over this image. */
             info("\n=== MODEL INFERENCE ===\n");
@@ -399,10 +398,6 @@ using namespace arm::app::object_detection;
 
         } // ScopedLVGLLock
 
-#if VERIFY_TEST_OUTPUT
-        DumpTensor(modelOutput0);
-        DumpTensor(modelOutput1);
-#endif /* VERIFY_TEST_OUTPUT */
 
         if (!PresentInferenceResult(results)) {
             return false;
