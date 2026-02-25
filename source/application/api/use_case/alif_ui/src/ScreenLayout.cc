@@ -190,7 +190,7 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
     lv_image_set_src(imageObj, &imageDesc);
     lv_obj_center(imageObj);
 
-    /* Add a logo */
+/*
     lv_obj_t *alifObj = lv_image_create(resultHolder);
 #if LV_THEME_DEFAULT_DARK == 0
     lv_image_set_src(alifObj, &Alif240);
@@ -198,7 +198,7 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
     lv_image_set_src(alifObj, &Alif240_white);
 #endif
     lv_obj_set_align(alifObj, LV_ALIGN_BOTTOM_MID);
-    lv_obj_move_to_index(alifObj, 0);
+    lv_obj_move_to_index(alifObj, 0);*/
 
     lv_port_unlock(lv_lock_state);
 }
