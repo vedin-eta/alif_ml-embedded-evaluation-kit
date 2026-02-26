@@ -460,26 +460,22 @@ using namespace arm::app::object_detection;
 
         lv_obj_t *frame = ScreenLayoutImageHolderObject();
 
-        /* Bounding boxes come in model space (256x256), need to map to display space (480x480)
-         * The model inference was done on a 256x256 center crop
-         * The display shows a 480x480 center crop
-         * Both crops are centered on the same 512x512 camera image
-         * Therefore: bbox needs to be scaled by 480/256 = 1.875 and offset by (480-256*1.875)/2 = 0
-         * Actually, since both are centered, we just need to scale, no offset needed!
+        /* Bounding boxes come in model crop space (256x256).
+         * The display shows a 240x240 center crop from the 512x512 frame.
+         * Model crop starts at 128, display crop starts at 136 -> shift by -8 in display space.
+         * No scaling between model and display pixels; only apply LVGL zoom.
          */
-        const float bboxToDisplayScale = BBOX_DISPLAY_SCALE;  // 480/256 = 1.875
+        const float modelToDisplayOffset = (float)(MODEL_CROP_OFFSET - DISPLAY_CROP_OFFSET);  // -8
 
-        info("Bbox scaling: model space (256x256) -> display space (480x480)\n");
-        info("  bboxToDisplayScale = %.3f\n", bboxToDisplayScale);
-
-        /* Additional scaling from LVGL if frame is zoomed */
+        /* LVGL zoom from display pixels to frame pixels */
         float frameWidth = (float) lv_obj_get_content_width(frame);
         float frameHeight = (float) lv_obj_get_content_height(frame);
-        float lvglXScale = frameWidth / (DISPLAY_IMAGE_SIZE * 2);
-        float lvglYScale = frameHeight / (DISPLAY_IMAGE_SIZE * 2);
+        float lvglXScale = frameWidth / (float) DISPLAY_IMAGE_SIZE;
+        float lvglYScale = frameHeight / (float) DISPLAY_IMAGE_SIZE;
 
         info("LVGL frame dimensions: %.1f x %.1f\n", frameWidth, frameHeight);
         info("  lvglXScale = %.3f, lvglYScale = %.3f\n", lvglXScale, lvglYScale);
+        info("Model->display offset: %.1f pixels\n", modelToDisplayOffset);
 
         DeleteBoxes(frame);
 
@@ -491,20 +487,31 @@ using namespace arm::app::object_detection;
             info("  Model space (256x256): x0=%d y0=%d w=%d h=%d\n",
                  result.m_x0, result.m_y0, result.m_w, result.m_h);
 
-            /* Scale bbox from model space (256x256) to display space (480x480) */
-            float displayX = result.m_x0 * bboxToDisplayScale;
-            float displayY = result.m_y0 * bboxToDisplayScale;
-            float displayW = result.m_w * bboxToDisplayScale;
-            float displayH = result.m_h * bboxToDisplayScale;
+            /* Map model crop coords into display crop coords */
+            float displayX = result.m_x0 + modelToDisplayOffset;
+            float displayY = result.m_y0 + modelToDisplayOffset;
+            float displayW = result.m_w;
+            float displayH = result.m_h;
 
-            info("  Display space (480x480): x=%.1f y=%.1f w=%.1f h=%.1f\n",
-                 displayX, displayY, displayW, displayH);
+            /* Clip to display bounds (0..DISPLAY_IMAGE_SIZE) */
+            float x0 = std::max(0.0f, displayX);
+            float y0 = std::max(0.0f, displayY);
+            float x1 = std::min((float)DISPLAY_IMAGE_SIZE, displayX + displayW);
+            float y1 = std::min((float)DISPLAY_IMAGE_SIZE, displayY + displayH);
 
-            /* Apply additional LVGL scaling if needed */
-            int frameX = floor(displayX * lvglXScale) + 120;
-            int frameY = floor(displayY * lvglYScale) + 120;
-            int frameW = ceil(displayW * lvglXScale);
-            int frameH = ceil(displayH * lvglYScale);
+            if (x1 <= x0 || y1 <= y0) {
+                info("  Skipping: box outside display crop\n");
+                continue;
+            }
+
+            info("  Display space (240x240): x=%.1f y=%.1f w=%.1f h=%.1f\n",
+                 x0, y0, (x1 - x0), (y1 - y0));
+
+            /* Apply LVGL scaling */
+            int frameX = (int) floor(x0 * lvglXScale);
+            int frameY = (int) floor(y0 * lvglYScale);
+            int frameW = (int) ceil((x1 - x0) * lvglXScale);
+            int frameH = (int) ceil((y1 - y0) * lvglYScale);
 
             info("  Frame coords: x=%d y=%d w=%d h=%d\n", frameX, frameY, frameW, frameH);
 
@@ -514,7 +521,7 @@ using namespace arm::app::object_detection;
                 info("  Class: %s\n", className);
             }
 
-            CreateBox(frame, frameX, frameY, frameH, frameW, className);
+            CreateBox(frame, frameX, frameY, frameW, frameH, className);
         }
 
         info("=== DrawDetectionBoxes complete ===\n\n");
