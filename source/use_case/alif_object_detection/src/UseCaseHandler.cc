@@ -317,32 +317,6 @@ using namespace arm::app::object_detection;
             }
             info("Model inference successful!\n");
 
-            // Debug: Check output tensor values
-            info("\n=== OUTPUT TENSORS ===\n");
-            if (outputTensor0->type == kTfLiteUInt8 && outputTensor0->bytes >= 10) {
-                uint8_t* out0Data = outputTensor0->data.uint8;
-                info("Output tensor 0 first 10 values (uint8): %d %d %d %d %d %d %d %d %d %d\n",
-                     out0Data[0], out0Data[1], out0Data[2], out0Data[3], out0Data[4],
-                     out0Data[5], out0Data[6], out0Data[7], out0Data[8], out0Data[9]);
-            } else if (outputTensor0->type == kTfLiteFloat32 && outputTensor0->bytes >= 40) {
-                float* out0Data = outputTensor0->data.f;
-                info("Output tensor 0 first 10 values (float32): %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n",
-                     out0Data[0], out0Data[1], out0Data[2], out0Data[3], out0Data[4],
-                     out0Data[5], out0Data[6], out0Data[7], out0Data[8], out0Data[9]);
-            }
-
-            if (outputTensor1->type == kTfLiteUInt8 && outputTensor1->bytes >= 10) {
-                uint8_t* out1Data = outputTensor1->data.uint8;
-                info("Output tensor 1 first 10 values (uint8): %d %d %d %d %d %d %d %d %d %d\n",
-                     out1Data[0], out1Data[1], out1Data[2], out1Data[3], out1Data[4],
-                     out1Data[5], out1Data[6], out1Data[7], out1Data[8], out1Data[9]);
-            } else if (outputTensor1->type == kTfLiteFloat32 && outputTensor1->bytes >= 40) {
-                float* out1Data = outputTensor1->data.f;
-                info("Output tensor 1 first 10 values (float32): %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n",
-                     out1Data[0], out1Data[1], out1Data[2], out1Data[3], out1Data[4],
-                     out1Data[5], out1Data[6], out1Data[7], out1Data[8], out1Data[9]);
-            }
-
             info("\n=== POST-PROCESSING (SSD) ===\n");
             info("Starting post-processing...\n");
             if (!postProcess.DoPostProcess()) {
