@@ -455,7 +455,6 @@ using namespace arm::app::object_detection;
                                    int imgInputCols __attribute__((unused)),
                                    int imgInputRows __attribute__((unused)))
     {
-        return;
         info("\n=== DrawDetectionBoxes ===\n");
         info("Number of results to draw: %zu\n", results.size());
 
