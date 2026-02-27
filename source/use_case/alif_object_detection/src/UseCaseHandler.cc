@@ -37,6 +37,7 @@
 
 #include <cinttypes>
 #include <cmath>
+#include <cstdio>
 
 #include "lvgl.h"
 #include "lv_port.h"
@@ -515,13 +516,15 @@ using namespace arm::app::object_detection;
 
             info("  Frame coords: x=%d y=%d w=%d h=%d\n", frameX, frameY, frameW, frameH);
 
-            const char* className = nullptr;
+            const char* className = "unknown";
             if (result.m_classIndex >= 0 && result.m_classIndex < numClasses) {
                 className = classLabels[result.m_classIndex];
                 info("  Class: %s\n", className);
             }
 
-            CreateBox(frame, frameX, frameY, frameW, frameH, className);
+            char labelText[64];
+            snprintf(labelText, sizeof(labelText), "%s %.2f", className, result.m_normalisedVal);
+            CreateBox(frame, frameX, frameY, frameW, frameH, labelText);
         }
 
         info("=== DrawDetectionBoxes complete ===\n\n");

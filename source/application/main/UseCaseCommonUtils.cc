@@ -51,17 +51,15 @@ namespace app {
                 resultStr.c_str(), resultStr.size(), dataPsnTxtStartX1, rowIdx1, false);
             rowIdx1 += dataPsnTxtYIncr;
 
-            resultStr = std::to_string(i + 1) + ") " + results[i].m_label +
-                        " (" + std::to_string(results[i].m_normalisedVal) + ")";
+            resultStr = std::to_string(i + 1) + ") " + results[i].m_label;
             hal_lcd_display_text(resultStr.c_str(), resultStr.size(), dataPsnTxtStartX2, rowIdx2, 0);
             rowIdx2 += dataPsnTxtYIncr;
 
-            info("%" PRIu32 ") %" PRIu32 " (%f) -> %s (%f)\n",
+            info("%" PRIu32 ") %" PRIu32 " (%f) -> %s\n",
                  i,
                  results[i].m_labelIdx,
                  results[i].m_normalisedVal,
-                 results[i].m_label.c_str(),
-                 results[i].m_normalisedVal);
+                 results[i].m_label.c_str());
         }
 
         return true;
