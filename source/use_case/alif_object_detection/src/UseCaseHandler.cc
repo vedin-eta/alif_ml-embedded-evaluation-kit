@@ -405,31 +405,6 @@ using namespace arm::app::object_detection;
             int frameY = floor(result.m_y0 * yScale + MODEL_CROP_OFFSET);
             int frameW = ceil(result.m_w * xScale);
             int frameH = ceil(result.m_h * yScale);
-            /* Map model crop coords into display crop coords */
-            float displayX = result.m_x0 + modelToDisplayOffset;
-            float displayY = result.m_y0 + modelToDisplayOffset;
-            float displayW = result.m_w;
-            float displayH = result.m_h;
-
-            /* Clip to display bounds (0..DISPLAY_IMAGE_SIZE) */
-            float x0 = std::max(0.0f, displayX);
-            float y0 = std::max(0.0f, displayY);
-            float x1 = std::min((float)DISPLAY_IMAGE_SIZE, displayX + displayW);
-            float y1 = std::min((float)DISPLAY_IMAGE_SIZE, displayY + displayH);
-
-            if (x1 <= x0 || y1 <= y0) {
-                info("  Skipping: box outside display crop\n");
-                continue;
-            }
-
-            info("  Display space (240x240): x=%.1f y=%.1f w=%.1f h=%.1f\n",
-                 x0, y0, (x1 - x0), (y1 - y0));
-
-            /* Apply LVGL scaling */
-            int frameX = (int) floor(x0 * lvglXScale);
-            int frameY = (int) floor(y0 * lvglYScale);
-            int frameW = (int) ceil((x1 - x0) * lvglXScale);
-            int frameH = (int) ceil((y1 - y0) * lvglYScale);
 
             debug("Frame coords: x=%d y=%d w=%d h=%d\n", frameX, frameY, frameW, frameH);
 
