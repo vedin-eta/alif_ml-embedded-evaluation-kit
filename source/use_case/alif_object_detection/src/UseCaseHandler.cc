@@ -63,6 +63,11 @@ namespace {
 lv_style_t boxStyle;
 lv_style_t activeAreaStyle;
 lv_obj_t* activeAreaBox = nullptr;
+
+/* Metrics labels */
+lv_obj_t* metricLabels[6];      // Text labels on the left
+lv_obj_t* metricValues[6];      // Value labels on the right
+
 lvgl_pixel_t lvgl_image[CAMERA_IMAGE_SIZE][CAMERA_IMAGE_SIZE] __attribute__((section(".bss.lcd_image_buf")));                      // 196x196x2 = 76,832
 };
 
@@ -94,8 +99,40 @@ using namespace arm::app::object_detection;
         uint32_t lv_lock_state = lv_port_lock();
 
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "No animals detected");
-        lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Predict time: %.2f ms, energy per inference: %.2f mJ", PREDICT_TIME_MS, ENERGY_MJ);
-        lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "RAM usage: %.2f KB, NVME usage: %.2f KB", MODEL_RAM_KB, MODEL_FLASH_KB);
+
+        /* Create metrics table - 6 rows with label and value columns */
+        const char* metricNames[] = {
+            "Image acquisition and display",
+            "Image pre-processing",
+            "Prediction time",
+            "Results post-processing",
+            "Inference loop",
+            "FPS"
+        };
+
+        int yStart = 10;
+        int rowHeight = 50;
+        int labelX = 10;
+        int valueX = 310;
+
+        for (int i = 0; i < 6; i++) {
+            /* Text label on left - black text */
+            metricLabels[i] = lv_label_create(ScreenLayoutLabelObject(0));
+            lv_label_set_text(metricLabels[i], metricNames[i]);
+            lv_obj_set_style_text_color(metricLabels[i], lv_color_black(), LV_PART_MAIN);
+            lv_obj_set_width(metricLabels[i], 300);
+            lv_obj_set_pos(metricLabels[i], labelX, yStart + i * rowHeight);
+
+            /* Value label on right - red text */
+            metricValues[i] = lv_label_create(ScreenLayoutLabelObject(0));
+            lv_label_set_text(metricValues[i], "0.00 ms");
+            lv_obj_set_style_text_color(metricValues[i], lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
+            lv_obj_set_width(metricValues[i], 180);
+            lv_obj_set_pos(metricValues[i], valueX, yStart + i * rowHeight);
+        }
+
+        /* Set FPS label differently */
+        lv_label_set_text(metricValues[5], "0.00");
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
@@ -223,8 +260,15 @@ using namespace arm::app::object_detection;
         /* Ensure there are no results leftover from previous inference when running all. */
         results.clear();
 
-        hal_camera_start();
+        /* Timing variables */
+        uint32_t loopStart = Get_SysTick_Cycle_Count32();
+        uint32_t acquireStart, acquireEnd;
+        uint32_t preprocessStart, preprocessEnd;
+        uint32_t inferenceStart, inferenceEnd;
+        uint32_t postprocessStart, postprocessEnd;
 
+        acquireStart = Get_SysTick_Cycle_Count32();
+        hal_camera_start();
 
         uint32_t capturedFrameSize = 0;
         const uint8_t* fullImage = hal_camera_get_captured_frame(&capturedFrameSize);
@@ -240,14 +284,12 @@ using namespace arm::app::object_detection;
             write_to_lvgl_buf(CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE,
                             fullImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
+            acquireEnd = Get_SysTick_Cycle_Count32();
 
             lv_led_on(ScreenLayoutLEDObject());
 
-#if SHOW_INF_TIME
-        uint32_t inf_prof = Get_SysTick_Cycle_Count32();
-#endif
-
             /* Run the pre-processing, inference and post-processing. */
+            preprocessStart = Get_SysTick_Cycle_Count32();
             debug("Starting pre-processing with on-the-fly crop from 512x512 to 256x256...\n");
             if (!preProcess.DoPreProcessWithCrop(fullImage,
                                                  CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE,
@@ -257,20 +299,25 @@ using namespace arm::app::object_detection;
                 printf_err("Pre-processing failed.");
                 return false;
             }
+            preprocessEnd = Get_SysTick_Cycle_Count32();
 
             /* Run inference over this image. */
+            inferenceStart = Get_SysTick_Cycle_Count32();
             debug("Running model inference...\n");
             if (!RunInference(model, profiler)) {
                 printf_err("Inference failed.");
                 return false;
             }
+            inferenceEnd = Get_SysTick_Cycle_Count32();
             debug("Model inference successful!\n");
 
+            postprocessStart = Get_SysTick_Cycle_Count32();
             debug("Starting post-processing...\n");
             if (!postProcess.DoPostProcess()) {
                 printf_err("Post-processing failed.");
                 return false;
             }
+            postprocessEnd = Get_SysTick_Cycle_Count32();
             debug("Post-processing completed\n");
             if (results.empty()) {
                 lv_label_set_text(ScreenLayoutHeaderObject(), "No animals detected");
@@ -333,6 +380,23 @@ using namespace arm::app::object_detection;
             info("Drawing detection boxes...\n");
             DrawDetectionBoxes(results, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
             info("Boxes drawn\n");
+
+            /* Calculate metrics */
+            uint32_t loopEnd = Get_SysTick_Cycle_Count32();
+            float acquireMs = (acquireEnd - acquireStart) / (float)SystemCoreClock * 1000.0f;
+            float preprocessMs = (preprocessEnd - preprocessStart) / (float)SystemCoreClock * 1000.0f;
+            float inferenceMs = (inferenceEnd - inferenceStart) / (float)SystemCoreClock * 1000.0f;
+            float postprocessMs = (postprocessEnd - postprocessStart) / (float)SystemCoreClock * 1000.0f;
+            float loopMs = (loopEnd - loopStart) / (float)SystemCoreClock * 1000.0f;
+            float fps = 1000.0f / loopMs;
+
+            /* Update metric labels */
+            lv_label_set_text_fmt(metricValues[0], "%.2f ms", acquireMs);
+            lv_label_set_text_fmt(metricValues[1], "%.2f ms", preprocessMs);
+            lv_label_set_text_fmt(metricValues[2], "%.2f ms", inferenceMs);
+            lv_label_set_text_fmt(metricValues[3], "%.2f ms", postprocessMs);
+            lv_label_set_text_fmt(metricValues[4], "%.2f ms", loopMs);
+            lv_label_set_text_fmt(metricValues[5], "%.2f", fps);
 
         } // ScopedLVGLLock
 
@@ -472,7 +536,7 @@ using namespace arm::app::object_detection;
         lv_obj_set_style_bg_color(activeAreaLabel, lv_color_black(), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(activeAreaLabel, LV_OPA_70, LV_PART_MAIN);
         lv_obj_set_style_pad_all(activeAreaLabel, 2, LV_PART_MAIN);
-        lv_obj_align(activeAreaLabel, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
+        lv_obj_align(activeAreaLabel, LV_ALIGN_OUT_TOP_LEFT, 0, -20);
     }
 
 } /* namespace app */
