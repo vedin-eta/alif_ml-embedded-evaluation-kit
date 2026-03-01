@@ -241,14 +241,14 @@ using namespace arm::app::object_detection;
         std::vector<object_detection::DetectionResult> results;
 #ifdef MODEL_TYPE_SSD
         const object_detection::PostProcessParams postProcessParams {
-            inputImgRows, inputImgCols, object_detection::originalImageSize,
+            inputImgRows, inputImgCols, MODEL_INPUT_SIZE,
             object_detection::anchor1, object_detection::anchor2, object_detection::anchor3,
             0.45f, 0.2f, numClasses, 10,
             object_detection::ModelType::SSD
         };
 #else
         const object_detection::PostProcessParams postProcessParams {
-            inputImgRows, inputImgCols, object_detection::originalImageSize,
+            inputImgRows, inputImgCols, object_detection::MODEL_INPUT_SIZE,
             object_detection::anchor1, object_detection::anchor2, object_detection::anchor3,
             0.45f, 0.2f, numClasses, 10,
             object_detection::ModelType::YOLO
