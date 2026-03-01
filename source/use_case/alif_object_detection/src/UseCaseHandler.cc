@@ -329,6 +329,7 @@ using namespace arm::app::object_detection;
                 lv_label_set_text_fmt(ScreenLayoutHeaderObject(), "%s detected", className);
             }
             debug("Number of animals detected: %zu\n", results.size());
+            uint32_t loopEnd = Get_SysTick_Cycle_Count32();
 #if SHOW_INF_TIME
             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
             lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "Inference time: %.3f ms", (double)inf_prof / SystemCoreClock * 1000);
@@ -382,7 +383,6 @@ using namespace arm::app::object_detection;
             info("Boxes drawn\n");
 
             /* Calculate metrics */
-            uint32_t loopEnd = Get_SysTick_Cycle_Count32();
             float acquireMs = (acquireEnd - acquireStart) / (float)SystemCoreClock * 1000.0f;
             float preprocessMs = (preprocessEnd - preprocessStart) / (float)SystemCoreClock * 1000.0f;
             float inferenceMs = (inferenceEnd - inferenceStart) / (float)SystemCoreClock * 1000.0f;
