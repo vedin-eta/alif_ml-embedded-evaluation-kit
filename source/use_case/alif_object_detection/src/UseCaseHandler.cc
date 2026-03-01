@@ -111,7 +111,7 @@ using namespace arm::app::object_detection;
         };
 
         int yStart = 10;
-        int rowHeight = 50;
+        int rowHeight = 30;
         int labelX = 10;
         int valueX = 310;
 
@@ -536,7 +536,7 @@ using namespace arm::app::object_detection;
         lv_obj_set_style_bg_color(activeAreaLabel, lv_color_black(), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(activeAreaLabel, LV_OPA_70, LV_PART_MAIN);
         lv_obj_set_style_pad_all(activeAreaLabel, 2, LV_PART_MAIN);
-        lv_obj_align(activeAreaLabel, LV_ALIGN_OUT_TOP_LEFT, 0, -20);
+        lv_obj_align(activeAreaLabel, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
     }
 
 } /* namespace app */
