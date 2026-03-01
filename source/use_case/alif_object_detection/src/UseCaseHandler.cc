@@ -43,22 +43,13 @@
 #include "lv_paint_utils.h"
 
 /* Camera and display configuration */
-#define CAMERA_IMAGE_SIZE       512     // Full camera capture size
-#define DISPLAY_IMAGE_SIZE      240     // Display crop size (240x240 centered)
+#define CAMERA_IMAGE_SIZE       480     // Full camera capture size
 #define MODEL_INPUT_SIZE        256     // Model inference input size (256x256 centered)
 
 /* Display buffer configuration */
-#define LIMAGE_X                DISPLAY_IMAGE_SIZE
-#define LIMAGE_Y                DISPLAY_IMAGE_SIZE
-#define LV_ZOOM                 (2 * 256)  // 2:1 scale (no zoom)
-
-/* Crop offsets from 512x512 camera image */
-#define DISPLAY_CROP_OFFSET     ((CAMERA_IMAGE_SIZE - DISPLAY_IMAGE_SIZE) / 2)
+#define LV_ZOOM                 (1 * 256)  // 1:1 scale (no zoom)
 #define MODEL_CROP_OFFSET       ((CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2)
-
 /* Bounding box coordinate mapping: model space (256x256) to display space (480x480) */
-#define BBOX_DISPLAY_SCALE      ((float)DISPLAY_IMAGE_SIZE / (float)MODEL_INPUT_SIZE)
-#define BBOX_DISPLAY_OFFSET     ((DISPLAY_IMAGE_SIZE - MODEL_INPUT_SIZE * BBOX_DISPLAY_SCALE) / 2)
 
 // Model static data
 #define PREDICT_TIME_MS 9.46f
@@ -69,7 +60,7 @@
 
 namespace {
 lv_style_t boxStyle;
-lvgl_pixel_t lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section(".bss.lcd_image_buf")));                      // 196x196x2 = 76,832
+lvgl_pixel_t lvgl_image[CAMERA_IMAGE_SIZE][CAMERA_IMAGE_SIZE] __attribute__((section(".bss.lcd_image_buf")));                      // 196x196x2 = 76,832
 };
 
 using arm::app::Profiler;
@@ -96,7 +87,7 @@ using namespace arm::app::object_detection;
     bool ObjectDetectionInit(YoloFastestModel& model)
     {
 
-        ScreenLayoutInit(lvgl_image, sizeof lvgl_image, LIMAGE_X, LIMAGE_Y, LV_ZOOM);
+        ScreenLayoutInit(lvgl_image, sizeof lvgl_image, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE, LV_ZOOM);
         uint32_t lv_lock_state = lv_port_lock();
 
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "No animals detected");
@@ -124,10 +115,10 @@ using namespace arm::app::object_detection;
         const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
         const int inputImgRows = inputShape->data[YoloFastestModel::ms_inputRowsIdx];
 
-        info("DEBUG: Model input shape from tensor:\n");
-        info("DEBUG:   inputImgCols = %d\n", inputImgCols);
-        info("DEBUG:   inputImgRows = %d\n", inputImgRows);
-        info("DEBUG:   Expected model input size = %d bytes (%d x %d x 3)\n",
+        debug("Model input shape from tensor:\n");
+        debug("  inputImgCols = %d\n", inputImgCols);
+        debug("  inputImgRows = %d\n", inputImgRows);
+        debug("  Expected model input size = %d bytes (%d x %d x 3)\n",
              inputImgCols * inputImgRows * 3, inputImgCols, inputImgRows);
 
         auto bCamera = hal_camera_configure(CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE, HAL_CAMERA_MODE_SINGLE_FRAME, HAL_CAMERA_COLOUR_FORMAT_RGB888);
@@ -136,9 +127,7 @@ using namespace arm::app::object_detection;
             return false;
         }
 
-        info("DEBUG: Camera configured for %dx%d RGB888\n", CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
-        info("DEBUG: Display crop: %dx%d (offset %d)\n", DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE, DISPLAY_CROP_OFFSET);
-        info("DEBUG: Model input crop: %dx%d (offset %d)\n", MODEL_INPUT_SIZE, MODEL_INPUT_SIZE, MODEL_CROP_OFFSET);
+        debug("Camera configured for %dx%d RGB888\n", CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
 
         return true;
     }
@@ -176,12 +165,6 @@ using namespace arm::app::object_detection;
         TfLiteTensor* outputTensor1 = model.GetOutputTensor(1);
         TfLiteTensor* outputTensor2 = model.GetOutputTensor(2);
 
-        info("\n=== MODEL TENSOR INFORMATION ===\n");
-        info("Input tensor - type: %d, bytes: %zu\n", inputTensor->type, inputTensor->bytes);
-        info("Output tensor 0 - type: %d, bytes: %zu\n", outputTensor0->type, outputTensor0->bytes);
-        info("Output tensor 1 - type: %d, bytes: %zu\n", outputTensor1->type, outputTensor1->bytes);
-        info("Output tensor 2 - type: %d, bytes: %zu\n", outputTensor2->type, outputTensor2->bytes);
-
         if (!inputTensor->dims) {
             printf_err("Invalid input tensor dims\n");
             return false;
@@ -190,40 +173,14 @@ using namespace arm::app::object_detection;
             return false;
         }
 
-        info("Input tensor dims: [");
-        for (int i = 0; i < inputTensor->dims->size; i++) {
-            info("%d%s", inputTensor->dims->data[i], i < inputTensor->dims->size - 1 ? ", " : "");
-        }
-        info("]\n");
-
-        info("Output tensor 0 dims: [");
-        for (int i = 0; i < outputTensor0->dims->size; i++) {
-            info("%d%s", outputTensor0->dims->data[i], i < outputTensor0->dims->size - 1 ? ", " : "");
-        }
-        info("]\n");
-
-        info("Output tensor 1 dims: [");
-        for (int i = 0; i < outputTensor1->dims->size; i++) {
-            info("%d%s", outputTensor1->dims->data[i], i < outputTensor1->dims->size - 1 ? ", " : "");
-        }
-        info("]\n");
-
-        info("Output tensor 2 dims: [");
-        for (int i = 0; i < outputTensor2->dims->size; i++) {
-            info("%d%s", outputTensor2->dims->data[i], i < outputTensor2->dims->size - 1 ? ", " : "");
-        }
-        info("]\n");
-
         TfLiteIntArray* inputShape = model.GetInputShape(0);
 
         const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
         const int inputImgRows = inputShape->data[YoloFastestModel::ms_inputRowsIdx];
 
-        info("Parsed input dimensions: %dx%d (expecting RGB, 3 channels)\n", inputImgCols, inputImgRows);
+        debug("Parsed input dimensions: %dx%d (expecting RGB, 3 channels)\n", inputImgCols, inputImgRows);
 
-        /* Set up pre and post-processing. */
-        info("Model data signed: %s\n", model.IsDataSigned() ? "YES" : "NO");
-        DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, true, model.IsDataSigned());
+        DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, false, model.IsDataSigned());
 
         std::vector<object_detection::DetectionResult> results;
 #ifdef MODEL_TYPE_SSD
@@ -247,49 +204,23 @@ using namespace arm::app::object_detection;
         /* Ensure there are no results leftover from previous inference when running all. */
         results.clear();
 
-        info("\n=== CAMERA CAPTURE ===\n");
-        info("Starting camera capture...\n");
         hal_camera_start();
 
-        info("Waiting for captured frame...\n");
+
         uint32_t capturedFrameSize = 0;
         const uint8_t* fullImage = hal_camera_get_captured_frame(&capturedFrameSize);
         if (!fullImage || !capturedFrameSize) {
             printf_err("hal_camera_get_captured_frame failed");
             return false;
         }
-        info("Full frame captured successfully, size: %u bytes (%dx%d RGB)\n",
-             capturedFrameSize, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
-
-        /* Allocate buffer for display crop only - place in external memory to avoid DTCM overflow */
-        static uint8_t displayCrop[DISPLAY_IMAGE_SIZE * DISPLAY_IMAGE_SIZE * 3] __attribute__((section(".bss.lcd_image_buf")));
-
-        /* Extract 480x480 display crop (offset 16,16 from 512x512) */
-        info("\n=== EXTRACTING DISPLAY CROP ===\n");
-        info("Display crop: %dx%d from offset (%d, %d)\n",
-             DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE, DISPLAY_CROP_OFFSET, DISPLAY_CROP_OFFSET);
-        for (int y = 0; y < DISPLAY_IMAGE_SIZE; y++) {
-            const uint8_t* src_row = fullImage + ((DISPLAY_CROP_OFFSET + y) * CAMERA_IMAGE_SIZE + DISPLAY_CROP_OFFSET) * 3;
-            uint8_t* dst_row = displayCrop + y * DISPLAY_IMAGE_SIZE * 3;
-            memcpy(dst_row, src_row, DISPLAY_IMAGE_SIZE * 3);
-        }
-
-        /* Model crop (256x256 from offset 128,128) will be extracted on-the-fly during preprocessing */
-        info("\n=== MODEL INPUT ===\n");
-        info("Model will process 256x256 center crop from 512x512 image (offset %d,%d)\n",
-             MODEL_CROP_OFFSET, MODEL_CROP_OFFSET);
 
         {
             ScopedLVGLLock lv_lock;
 
-            info("\n=== LCD DISPLAY ===\n");
-            info("Displaying %dx%d image on LCD...\n", DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE);
             /* Display the 480x480 crop on the LCD */
-            write_to_lvgl_buf(DISPLAY_IMAGE_SIZE, DISPLAY_IMAGE_SIZE,
-                            displayCrop, &lvgl_image[0][0]);
+            write_to_lvgl_buf(CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE,
+                            fullImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
-            info("Display updated\n");
-
             lv_led_on(ScreenLayoutLEDObject());
 
 #if SHOW_INF_TIME
@@ -297,8 +228,7 @@ using namespace arm::app::object_detection;
 #endif
 
             /* Run the pre-processing, inference and post-processing. */
-            info("\n=== PRE-PROCESSING ===\n");
-            info("Starting pre-processing with on-the-fly crop from 512x512 to 256x256...\n");
+            debug("Starting pre-processing with on-the-fly crop from 512x512 to 256x256...\n");
             if (!preProcess.DoPreProcessWithCrop(fullImage,
                                                  CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE,
                                                  MODEL_CROP_OFFSET, MODEL_CROP_OFFSET,
@@ -309,47 +239,19 @@ using namespace arm::app::object_detection;
             }
 
             /* Run inference over this image. */
-            info("\n=== MODEL INFERENCE ===\n");
-            info("Running model inference...\n");
+            debug("Running model inference...\n");
             if (!RunInference(model, profiler)) {
                 printf_err("Inference failed.");
                 return false;
             }
-            info("Model inference successful!\n");
+            debug("Model inference successful!\n");
 
-            // Debug: Check output tensor values
-            info("\n=== OUTPUT TENSORS ===\n");
-            if (outputTensor0->type == kTfLiteUInt8 && outputTensor0->bytes >= 10) {
-                uint8_t* out0Data = outputTensor0->data.uint8;
-                info("Output tensor 0 first 10 values (uint8): %d %d %d %d %d %d %d %d %d %d\n",
-                     out0Data[0], out0Data[1], out0Data[2], out0Data[3], out0Data[4],
-                     out0Data[5], out0Data[6], out0Data[7], out0Data[8], out0Data[9]);
-            } else if (outputTensor0->type == kTfLiteFloat32 && outputTensor0->bytes >= 40) {
-                float* out0Data = outputTensor0->data.f;
-                info("Output tensor 0 first 10 values (float32): %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n",
-                     out0Data[0], out0Data[1], out0Data[2], out0Data[3], out0Data[4],
-                     out0Data[5], out0Data[6], out0Data[7], out0Data[8], out0Data[9]);
-            }
-
-            if (outputTensor1->type == kTfLiteUInt8 && outputTensor1->bytes >= 10) {
-                uint8_t* out1Data = outputTensor1->data.uint8;
-                info("Output tensor 1 first 10 values (uint8): %d %d %d %d %d %d %d %d %d %d\n",
-                     out1Data[0], out1Data[1], out1Data[2], out1Data[3], out1Data[4],
-                     out1Data[5], out1Data[6], out1Data[7], out1Data[8], out1Data[9]);
-            } else if (outputTensor1->type == kTfLiteFloat32 && outputTensor1->bytes >= 40) {
-                float* out1Data = outputTensor1->data.f;
-                info("Output tensor 1 first 10 values (float32): %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n",
-                     out1Data[0], out1Data[1], out1Data[2], out1Data[3], out1Data[4],
-                     out1Data[5], out1Data[6], out1Data[7], out1Data[8], out1Data[9]);
-            }
-
-            info("\n=== POST-PROCESSING (SSD) ===\n");
-            info("Starting post-processing...\n");
+            debug("Starting post-processing...\n");
             if (!postProcess.DoPostProcess()) {
                 printf_err("Post-processing failed.");
                 return false;
             }
-            info("Post-processing completed\n");
+            debug("Post-processing completed\n");
             if (results.empty()) {
                 lv_label_set_text(ScreenLayoutHeaderObject(), "No animals detected");
             } else {
@@ -359,13 +261,11 @@ using namespace arm::app::object_detection;
                 }
                 lv_label_set_text_fmt(ScreenLayoutHeaderObject(), "%s detected", className);
             }
-            info("\n=== DETECTION RESULTS ===\n");
-            info("Number of animals detected: %zu\n", results.size());
+            debug("Number of animals detected: %zu\n", results.size());
 #if SHOW_INF_TIME
             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
             lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "Inference time: %.3f ms", (double)inf_prof / SystemCoreClock * 1000);
             lv_label_set_text_fmt(ScreenLayoutLabelObject(3), "Inferences / sec: %.2f", (double) SystemCoreClock / inf_prof);
-            //lv_label_set_text_fmt(ScreenLayoutLabelObject(3), "Inferences / second: %.2f", (double) SystemCoreClock / (inf_loop_time_end - inf_loop_time_start));
 #endif
 
 #ifdef MODEL_TYPE_SSD
@@ -393,22 +293,22 @@ using namespace arm::app::object_detection;
             // Print details for top 2 detections
             size_t numToPrint = results.size() < 2 ? results.size() : 2;
             if (numToPrint > 0) {
-                info("\nTop %zu detection(s):\n", numToPrint);
+                debug("\nTop %zu detection(s):\n", numToPrint);
                 for (size_t i = 0; i < numToPrint; ++i) {
-                    info("  [%zu] Confidence: %.4f, BBox: x=%d y=%d w=%d h=%d\n",
+                    debug("  [%zu] Confidence: %.4f, BBox: x=%d y=%d w=%d h=%d\n",
                          i + 1,
                          results[i].m_normalisedVal,
                          results[i].m_x0, results[i].m_y0,
                          results[i].m_w, results[i].m_h);
                 }
             } else {
-                info("No detections above confidence threshold\n");
+                debug("No detections above confidence threshold\n");
             }
 #endif
 
             /* Draw boxes. */
             info("Drawing detection boxes...\n");
-            DrawDetectionBoxes(results, inputImgCols, inputImgRows);
+            DrawDetectionBoxes(results, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
             info("Boxes drawn\n");
 
         } // ScopedLVGLLock
@@ -478,34 +378,16 @@ using namespace arm::app::object_detection;
     }
 
     static void DrawDetectionBoxes(const std::vector<object_detection::DetectionResult>& results,
-                                   int imgInputCols __attribute__((unused)),
-                                   int imgInputRows __attribute__((unused)))
+                                   int imgInputCols,
+                                   int imgInputRows)
     {
-        info("\n=== DrawDetectionBoxes ===\n");
-        info("Number of results to draw: %zu\n", results.size());
-
+        debug("\n=== DrawDetectionBoxes ===\n");
+        debug("Number of results to draw: %zu\n", results.size());
         lv_obj_t *frame = ScreenLayoutImageHolderObject();
 
-        /* Bounding boxes come in model space (256x256), need to map to display space (480x480)
-         * The model inference was done on a 256x256 center crop
-         * The display shows a 480x480 center crop
-         * Both crops are centered on the same 512x512 camera image
-         * Therefore: bbox needs to be scaled by 480/256 = 1.875 and offset by (480-256*1.875)/2 = 0
-         * Actually, since both are centered, we just need to scale, no offset needed!
-         */
-        const float bboxToDisplayScale = BBOX_DISPLAY_SCALE;  // 480/256 = 1.875
+        float xScale = (float) lv_obj_get_content_width(frame) / imgInputCols;
+        float yScale = (float) lv_obj_get_content_height(frame) / imgInputRows;
 
-        info("Bbox scaling: model space (256x256) -> display space (480x480)\n");
-        info("  bboxToDisplayScale = %.3f\n", bboxToDisplayScale);
-
-        /* Additional scaling from LVGL if frame is zoomed */
-        float frameWidth = (float) lv_obj_get_content_width(frame);
-        float frameHeight = (float) lv_obj_get_content_height(frame);
-        float lvglXScale = frameWidth / (DISPLAY_IMAGE_SIZE * 2);
-        float lvglYScale = frameHeight / (DISPLAY_IMAGE_SIZE * 2);
-
-        info("LVGL frame dimensions: %.1f x %.1f\n", frameWidth, frameHeight);
-        info("  lvglXScale = %.3f, lvglYScale = %.3f\n", lvglXScale, lvglYScale);
 
         DeleteBoxes(frame);
 
@@ -513,37 +395,26 @@ using namespace arm::app::object_detection;
         for (const auto& result: results) {
             box_num++;
 
-            info("\nBox %d (class=%d, conf=%.3f):\n", box_num, result.m_classIndex, result.m_normalisedVal);
-            info("  Model space (256x256): x0=%d y0=%d w=%d h=%d\n",
+            debug("\nBox %d (class=%d, conf=%.3f):\n", box_num, result.m_classIndex, result.m_normalisedVal);
+            debug("  Model space (256x256): x0=%d y0=%d w=%d h=%d\n",
                  result.m_x0, result.m_y0, result.m_w, result.m_h);
 
-            /* Scale bbox from model space (256x256) to display space (480x480) */
-            float displayX = result.m_x0 * bboxToDisplayScale;
-            float displayY = result.m_y0 * bboxToDisplayScale;
-            float displayW = result.m_w * bboxToDisplayScale;
-            float displayH = result.m_h * bboxToDisplayScale;
-
-            info("  Display space (480x480): x=%.1f y=%.1f w=%.1f h=%.1f\n",
-                 displayX, displayY, displayW, displayH);
-
             /* Apply additional LVGL scaling if needed */
-            int frameX = floor(displayX * lvglXScale) + 120;
-            int frameY = floor(displayY * lvglYScale) + 120;
-            int frameW = ceil(displayW * lvglXScale);
-            int frameH = ceil(displayH * lvglYScale);
+            int frameX = floor(result.m_x0 * xScale + MODEL_CROP_OFFSET);
+            int frameY = floor(result.m_y0 * yScale + MODEL_CROP_OFFSET);
+            int frameW = ceil(result.m_w * xScale);
+            int frameH = ceil(result.m_h * yScale);
 
-            info("  Frame coords: x=%d y=%d w=%d h=%d\n", frameX, frameY, frameW, frameH);
+            debug("Frame coords: x=%d y=%d w=%d h=%d\n", frameX, frameY, frameW, frameH);
 
             const char* className = nullptr;
             if (result.m_classIndex >= 0 && result.m_classIndex < numClasses) {
                 className = classLabels[result.m_classIndex];
-                info("  Class: %s\n", className);
+                debug("  Class: %s\n", className);
             }
 
             CreateBox(frame, frameX, frameY, frameH, frameW, className);
         }
-
-        info("=== DrawDetectionBoxes complete ===\n\n");
     }
 
 } /* namespace app */
