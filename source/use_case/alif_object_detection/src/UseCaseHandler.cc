@@ -378,9 +378,7 @@ using namespace arm::app::object_detection;
             DrawActiveAreaBox();
 
             /* Draw boxes. */
-            info("Drawing detection boxes...\n");
             DrawDetectionBoxes(results, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
-            info("Boxes drawn\n");
 
             /* Calculate metrics */
             float acquireMs = (acquireEnd - acquireStart) / (float)SystemCoreClock * 1000.0f;
@@ -397,6 +395,16 @@ using namespace arm::app::object_detection;
             lv_label_set_text_fmt(metricValues[3], "%.2f ms", postprocessMs);
             lv_label_set_text_fmt(metricValues[4], "%.2f ms", loopMs);
             lv_label_set_text_fmt(metricValues[5], "%.2f", fps);
+
+            /* Debug log metrics table */
+            debug("\n=== Performance Metrics ===\n");
+            debug("Image acquisition and display: %.2f ms\n", acquireMs);
+            debug("Image pre-processing:          %.2f ms\n", preprocessMs);
+            debug("Prediction time:               %.2f ms\n", inferenceMs);
+            debug("Results post-processing:       %.2f ms\n", postprocessMs);
+            debug("Inference loop:                %.2f ms\n", loopMs);
+            debug("FPS:                           %.2f\n", fps);
+            debug("===========================\n\n");
 
         } // ScopedLVGLLock
 
