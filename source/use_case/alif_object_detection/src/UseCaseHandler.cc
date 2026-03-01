@@ -241,9 +241,6 @@ using namespace arm::app::object_detection;
                             fullImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
 
-            /* Draw active area box after image update */
-            DrawActiveAreaBox();
-
             lv_led_on(ScreenLayoutLEDObject());
 
 #if SHOW_INF_TIME
@@ -333,6 +330,8 @@ using namespace arm::app::object_detection;
             info("Drawing detection boxes...\n");
             DrawDetectionBoxes(results, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
             info("Boxes drawn\n");
+            /* Draw active area box after image update */
+            DrawActiveAreaBox();
 
         } // ScopedLVGLLock
 
