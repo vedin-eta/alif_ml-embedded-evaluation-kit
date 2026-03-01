@@ -82,9 +82,6 @@ namespace app {
 
 bool DetectorPostProcess::DoPostProcess()
 {
-    info("\n=== DoPostProcess ENTRY ===\n");
-    info("Model type: %s\n", m_postProcessParams.modelType == object_detection::ModelType::SSD ? "SSD" : "YOLO");
-
     /* Check model type and use appropriate post-processing */
     if (m_postProcessParams.modelType == object_detection::ModelType::SSD) {
         info("Entering SSD post-processing path\n");
@@ -92,9 +89,8 @@ bool DetectorPostProcess::DoPostProcess()
     }
 
     /* YOLO post-processing */
-    info("Entering YOLO post-processing path\n");
     info("YOLO: originalImageSize=%d x %d\n", m_postProcessParams.originalImageSize, m_postProcessParams.originalImageSize);
-    info("YOLO: threshold=%.4f, nms=%.4f, numClasses=%d\n",
+    info("YOLO: threshold=%.2f, nms=%.2f, numClasses=%d\n",
          m_postProcessParams.threshold, m_postProcessParams.nms, this->m_net.numClasses);
     info("YOLO: Number of branches=%zu\n", this->m_net.branches.size());
 
