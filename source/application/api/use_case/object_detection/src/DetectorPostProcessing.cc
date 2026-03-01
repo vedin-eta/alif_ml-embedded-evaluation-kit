@@ -307,7 +307,7 @@ void DetectorPostProcess::GetNetworkBoxes(
         num -=1;
 }
 
-bool DetectorPostProcess::ProcessSSD()
+bool DetectorPostProcess::ProcessSSD() const
 {
     /* SSD post-processing
      * Output 0: Bounding boxes [batch, num_boxes, 4] - normalized [xmin, ymin, xmax, ymax]
@@ -333,10 +333,10 @@ bool DetectorPostProcess::ProcessSSD()
     int num_classes_with_bg = this->m_outputTensor1->dims->data[2];
     int num_classes = num_classes_with_bg - 1; /* Remove background class */
 
-    info("SSD ProcessSSD: num_boxes=%d, num_classes=%d (with bg=%d)\n", num_boxes, num_classes, num_classes_with_bg);
-    info("SSD Box quantization: scale=%.6f, zero_point=%d\n", box_scale, box_zero_point);
-    info("SSD Score quantization: scale=%.6f, zero_point=%d\n", score_scale, score_zero_point);
-    info("SSD Confidence threshold: %.4f\n", m_postProcessParams.threshold);
+    debug("SSD ProcessSSD: num_boxes=%d, num_classes=%d (with bg=%d)\n", num_boxes, num_classes, num_classes_with_bg);
+    debug("SSD Box quantization: scale=%.6f, zero_point=%d\n", box_scale, box_zero_point);
+    debug("SSD Score quantization: scale=%.6f, zero_point=%d\n", score_scale, score_zero_point);
+    debug("SSD Confidence threshold: %.4f\n", m_postProcessParams.threshold);
 
     int8_t* boxes = this->m_outputTensor0->data.int8;
     int8_t* scores = this->m_outputTensor1->data.int8;
@@ -395,17 +395,17 @@ bool DetectorPostProcess::ProcessSSD()
         }
     }
 
-    info("SSD: Processed %d boxes, found %d detections above threshold\n", num_boxes, detections_above_threshold);
+    debug("SSD: Processed %d boxes, found %d detections above threshold\n", num_boxes, detections_above_threshold);
 
     /* Print highest confidence per class */
-    info("SSD: Highest confidences per class:\n");
+    debug("SSD: Highest confidences per class:\n");
     for (int c = 0; c < num_classes && c < 10; ++c) {
-        info("  Class %d: %.4f (box_idx=%d)\n", c, max_scores_per_class[c], max_scores_box_idx[c]);
+        debug("  Class %d: %.4f (box_idx=%d)\n", c, max_scores_per_class[c], max_scores_box_idx[c]);
     }
 
     /* Apply NMS per class */
     if (this->m_results.size() > 0) {
-        info("SSD: Applying NMS with threshold %.4f to %zu detections\n", m_postProcessParams.nms, this->m_results.size());
+        debug("SSD: Applying NMS with threshold %.4f to %zu detections\n", m_postProcessParams.nms, this->m_results.size());
         /* Simple NMS implementation per class */
         std::vector<object_detection::DetectionResult> filtered_results;
 
@@ -458,23 +458,9 @@ bool DetectorPostProcess::ProcessSSD()
         }
 
         this->m_results = filtered_results;
-        info("SSD: After NMS, %zu detections remain\n", this->m_results.size());
-
-        /* Print top 2 detections with their labels */
-        size_t num_to_print = this->m_results.size() < 2 ? this->m_results.size() : 2;
-        if (num_to_print > 0) {
-            info("SSD: Top %zu detection(s) after NMS:\n", num_to_print);
-            for (size_t i = 0; i < num_to_print; ++i) {
-                info("  [%zu] Class_idx=%d, Confidence=%.4f, BBox=[%.1f, %.1f, %.1f, %.1f]\n",
-                     i + 1,
-                     this->m_results[i].m_classIndex,
-                     this->m_results[i].m_normalisedVal,
-                     this->m_results[i].m_x0, this->m_results[i].m_y0,
-                     this->m_results[i].m_w, this->m_results[i].m_h);
-            }
-        }
+        debug("SSD: After NMS, %zu detections remain\n", this->m_results.size());
     } else {
-        info("SSD: No detections found above threshold %.4f\n", m_postProcessParams.threshold);
+        debug("SSD: No detections found above threshold %.4f\n", m_postProcessParams.threshold);
     }
 
     return true;

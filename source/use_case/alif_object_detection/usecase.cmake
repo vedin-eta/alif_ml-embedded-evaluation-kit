@@ -66,7 +66,7 @@ set(${use_case}_COMPILE_DEFS
 
 # Set default model path based on model type
 if("${${use_case}_MODEL_TYPE}" STREQUAL "SSD")
-    set(DEFAULT_MODEL_PATH      ${CMAKE_SOURCE_DIR}/alif_model_vela.tflite)
+    set(DEFAULT_MODEL_PATH      ${CMAKE_SOURCE_DIR}/alif_demo_model_vela.tflite)
 else()
     set(DEFAULT_MODEL_PATH      ${CMAKE_SOURCE_DIR}/alif_demo_yolo_model_vela.tflite)
 endif()

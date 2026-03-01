@@ -128,7 +128,7 @@ namespace object_detection {
          * @brief        Process SSD model outputs.
          * @return       true if successful, false otherwise.
          **/
-        bool ProcessSSD();
+        bool ProcessSSD() const;
     };
 
 } /* namespace app */
