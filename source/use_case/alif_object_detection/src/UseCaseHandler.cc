@@ -471,6 +471,7 @@ using namespace arm::app::object_detection;
             lv_obj_set_style_bg_color(text, lv_theme_get_color_primary(frame), LV_PART_MAIN);
             lv_obj_set_style_bg_opa(text, LV_OPA_70, LV_PART_MAIN);
             lv_obj_set_style_pad_all(text, 2, LV_PART_MAIN);
+            lv_obj_set_style_text_font(text, &lv_font_montserrat_16, LV_PART_MAIN);
             lv_obj_align(text, LV_ALIGN_TOP_LEFT, 0, 0);
         }
     }
