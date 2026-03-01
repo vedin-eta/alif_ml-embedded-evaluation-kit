@@ -106,7 +106,7 @@ using namespace arm::app::object_detection;
         lv_style_set_outline_color(&boxStyle, lv_theme_get_color_primary(ScreenLayoutHeaderObject()));
         lv_style_set_radius(&boxStyle, 4);
 
-        /* Create style for active area box */
+        /* Create style for active area box (will be drawn each frame) */
         lv_style_init(&activeAreaStyle);
         lv_style_set_bg_opa(&activeAreaStyle, LV_OPA_TRANSP);
         lv_style_set_pad_all(&activeAreaStyle, 0);
@@ -115,27 +115,6 @@ using namespace arm::app::object_detection;
         lv_style_set_outline_pad(&activeAreaStyle, 0);
         lv_style_set_outline_color(&activeAreaStyle, lv_palette_main(LV_PALETTE_RED));
         lv_style_set_radius(&activeAreaStyle, 0);
-
-        /* Create active area box centered on display */
-        lv_obj_t *frame = ScreenLayoutImageHolderObject();
-        activeAreaBox = lv_obj_create(frame);
-
-        /* Calculate position to center MODEL_INPUT_SIZE box on display */
-        int activeAreaDisplaySize = MODEL_INPUT_SIZE;  // 192x192 in display space
-        int centerOffset = (CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2;  // Center in 480x480
-
-        lv_obj_set_size(activeAreaBox, activeAreaDisplaySize, activeAreaDisplaySize);
-        lv_obj_add_style(activeAreaBox, &activeAreaStyle, LV_PART_MAIN);
-        lv_obj_set_pos(activeAreaBox, centerOffset, centerOffset);
-
-        /* Add label */
-        lv_obj_t *activeAreaLabel = lv_label_create(activeAreaBox);
-        lv_label_set_text(activeAreaLabel, "Active Area");
-        lv_obj_set_style_text_color(activeAreaLabel, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
-        lv_obj_set_style_bg_color(activeAreaLabel, lv_color_black(), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(activeAreaLabel, LV_OPA_70, LV_PART_MAIN);
-        lv_obj_set_style_pad_all(activeAreaLabel, 2, LV_PART_MAIN);
-        lv_obj_align(activeAreaLabel, LV_ALIGN_TOP_LEFT, 0, 0);
 
         lv_port_unlock(lv_lock_state);
 
@@ -183,6 +162,11 @@ using namespace arm::app::object_detection;
     static void DrawDetectionBoxes(
            const std::vector<object_detection::DetectionResult>& results,
            int imgInputCols, int imgInputRows);
+
+    /**
+     * @brief           Draw the active area box showing model input region.
+     **/
+    static void DrawActiveAreaBox();
 
     /* Object detection inference handler. */
     bool ObjectDetectionHandler(ApplicationContext& ctx)
@@ -256,6 +240,10 @@ using namespace arm::app::object_detection;
             write_to_lvgl_buf(CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE,
                             fullImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
+
+            /* Draw active area box after image update */
+            DrawActiveAreaBox();
+
             lv_led_on(ScreenLayoutLEDObject());
 
 #if SHOW_INF_TIME
@@ -452,6 +440,36 @@ using namespace arm::app::object_detection;
             snprintf(labelText, sizeof(labelText), "%s %.2f", className, result.m_normalisedVal);
             CreateBox(frame, frameX, frameY, frameW, frameH, labelText);
         }
+    }
+
+    static void DrawActiveAreaBox()
+    {
+        lv_obj_t *frame = ScreenLayoutImageHolderObject();
+
+        /* Delete old active area box if it exists */
+        if (activeAreaBox != nullptr) {
+            lv_obj_del(activeAreaBox);
+        }
+
+        /* Create new active area box */
+        activeAreaBox = lv_obj_create(frame);
+
+        /* Calculate position to center MODEL_INPUT_SIZE box on display */
+        int activeAreaDisplaySize = MODEL_INPUT_SIZE;  // 192x192 in display space
+        int centerOffset = (CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2;  // Center in 480x480
+
+        lv_obj_set_size(activeAreaBox, activeAreaDisplaySize, activeAreaDisplaySize);
+        lv_obj_add_style(activeAreaBox, &activeAreaStyle, LV_PART_MAIN);
+        lv_obj_set_pos(activeAreaBox, centerOffset, centerOffset);
+
+        /* Add label */
+        lv_obj_t *activeAreaLabel = lv_label_create(activeAreaBox);
+        lv_label_set_text(activeAreaLabel, "Active Area");
+        lv_obj_set_style_text_color(activeAreaLabel, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(activeAreaLabel, lv_color_black(), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(activeAreaLabel, LV_OPA_70, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(activeAreaLabel, 2, LV_PART_MAIN);
+        lv_obj_align(activeAreaLabel, LV_ALIGN_TOP_LEFT, 0, 0);
     }
 
 } /* namespace app */
