@@ -37,46 +37,48 @@ namespace app {
             m_results{results},
             m_postProcessParams{postProcessParams}
 {
-    /* Init PostProcessing */
-    this->m_net = object_detection::Network{
-        .inputWidth  = postProcessParams.inputImgCols,
-        .inputHeight = postProcessParams.inputImgRows,
-        .numClasses  = postProcessParams.numClasses,
-        .branches =
-            {object_detection::Branch{.resolution  = postProcessParams.inputImgCols / 16,
-                                      .numBox      = 3,
-                                      .anchor      = postProcessParams.anchor2,
-                                      .modelOutput = this->m_outputTensor0->data.int8,
-                                      .scale       = (static_cast<TfLiteAffineQuantization*>(
-                                                    this->m_outputTensor0->quantization.params))
-                                                   ->scale->data[0],
-                                      .zeroPoint = (static_cast<TfLiteAffineQuantization*>(
+    /* Init PostProcessing - only for YOLO models */
+    if (postProcessParams.modelType == object_detection::ModelType::YOLO) {
+        this->m_net = object_detection::Network{
+            .inputWidth  = postProcessParams.inputImgCols,
+            .inputHeight = postProcessParams.inputImgRows,
+            .numClasses  = postProcessParams.numClasses,
+            .branches =
+                {object_detection::Branch{.resolution  = postProcessParams.inputImgCols / 16,
+                                          .numBox      = 3,
+                                          .anchor      = postProcessParams.anchor2,
+                                          .modelOutput = this->m_outputTensor0->data.int8,
+                                          .scale       = (static_cast<TfLiteAffineQuantization*>(
                                                         this->m_outputTensor0->quantization.params))
-                                                       ->zero_point->data[0],
-                                      .size = this->m_outputTensor0->bytes},
-             object_detection::Branch{.resolution  = postProcessParams.inputImgCols / 8,
-                                      .numBox      = 3,
-                                      .anchor      = postProcessParams.anchor1,
-                                      .modelOutput = this->m_outputTensor1->data.int8,
-                                      .scale       = (static_cast<TfLiteAffineQuantization*>(
-                                                    this->m_outputTensor1->quantization.params))
-                                                   ->scale->data[0],
-                                      .zeroPoint = (static_cast<TfLiteAffineQuantization*>(
+                                                       ->scale->data[0],
+                                          .zeroPoint = (static_cast<TfLiteAffineQuantization*>(
+                                                            this->m_outputTensor0->quantization.params))
+                                                           ->zero_point->data[0],
+                                          .size = this->m_outputTensor0->bytes},
+                 object_detection::Branch{.resolution  = postProcessParams.inputImgCols / 8,
+                                          .numBox      = 3,
+                                          .anchor      = postProcessParams.anchor1,
+                                          .modelOutput = this->m_outputTensor1->data.int8,
+                                          .scale       = (static_cast<TfLiteAffineQuantization*>(
                                                         this->m_outputTensor1->quantization.params))
-                                                       ->zero_point->data[0],
-                                      .size = this->m_outputTensor1->bytes},
-             object_detection::Branch{.resolution  = postProcessParams.inputImgCols / 32,
-                                      .numBox      = 3,
-                                      .anchor      = postProcessParams.anchor3,
-                                      .modelOutput = this->m_outputTensor2->data.int8,
-                                      .scale       = (static_cast<TfLiteAffineQuantization*>(
-                                                    this->m_outputTensor2->quantization.params))
-                                                   ->scale->data[0],
-                                      .zeroPoint = (static_cast<TfLiteAffineQuantization*>(
+                                                       ->scale->data[0],
+                                          .zeroPoint = (static_cast<TfLiteAffineQuantization*>(
+                                                            this->m_outputTensor1->quantization.params))
+                                                           ->zero_point->data[0],
+                                          .size = this->m_outputTensor1->bytes},
+                 object_detection::Branch{.resolution  = postProcessParams.inputImgCols / 32,
+                                          .numBox      = 3,
+                                          .anchor      = postProcessParams.anchor3,
+                                          .modelOutput = this->m_outputTensor2->data.int8,
+                                          .scale       = (static_cast<TfLiteAffineQuantization*>(
                                                         this->m_outputTensor2->quantization.params))
-                                                       ->zero_point->data[0],
-                                      .size = this->m_outputTensor2->bytes}},
-        .topN = postProcessParams.topN};
+                                                       ->scale->data[0],
+                                          .zeroPoint = (static_cast<TfLiteAffineQuantization*>(
+                                                            this->m_outputTensor2->quantization.params))
+                                                           ->zero_point->data[0],
+                                          .size = this->m_outputTensor2->bytes}},
+            .topN = postProcessParams.topN};
+    }
     /* End init */
 }
 
