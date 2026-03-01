@@ -466,13 +466,13 @@ using namespace arm::app::object_detection;
         lv_obj_set_pos(activeAreaBox, centerOffset, centerOffset);
 
         /* Add label above the box */
-        lv_obj_t *activeAreaLabel = lv_label_create(frame);
+        lv_obj_t *activeAreaLabel = lv_label_create(activeAreaBox);
         lv_label_set_text(activeAreaLabel, "Active Area");
         lv_obj_set_style_text_color(activeAreaLabel, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN);
         lv_obj_set_style_bg_color(activeAreaLabel, lv_color_black(), LV_PART_MAIN);
         lv_obj_set_style_bg_opa(activeAreaLabel, LV_OPA_70, LV_PART_MAIN);
         lv_obj_set_style_pad_all(activeAreaLabel, 2, LV_PART_MAIN);
-        lv_obj_set_pos(activeAreaLabel, centerOffset, centerOffset - 20);  // Position above the box
+        lv_obj_align(activeAreaLabel, LV_ALIGN_OUT_TOP_LEFT, 0, -5);
     }
 
 } /* namespace app */
