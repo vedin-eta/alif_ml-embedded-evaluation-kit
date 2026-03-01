@@ -326,12 +326,13 @@ using namespace arm::app::object_detection;
             }
 #endif
 
+            /* Draw active area box first (behind detection boxes) */
+            DrawActiveAreaBox();
+
             /* Draw boxes. */
             info("Drawing detection boxes...\n");
             DrawDetectionBoxes(results, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
             info("Boxes drawn\n");
-            /* Draw active area box after image update */
-            DrawActiveAreaBox();
 
         } // ScopedLVGLLock
 
@@ -372,11 +373,14 @@ using namespace arm::app::object_detection;
 
     static void DeleteBoxes(lv_obj_t *frame)
     {
-        // Assume that child 0 of the frame is the image itself
+        // Delete all children except child 0 (the image) and the active area box
         int children = lv_obj_get_child_count(frame);
-        while (children > 1) {
-            lv_obj_del(lv_obj_get_child(frame, 1));
-            children--;
+        for (int i = children - 1; i >= 1; i--) {
+            lv_obj_t* child = lv_obj_get_child(frame, i);
+            // Don't delete the active area box
+            if (child != activeAreaBox) {
+                lv_obj_del(child);
+            }
         }
     }
 
