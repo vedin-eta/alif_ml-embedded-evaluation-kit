@@ -182,7 +182,7 @@ using namespace arm::app::object_detection;
         debug("Parsed input dimensions: %dx%d (expecting RGB, 3 channels)\n", inputImgCols, inputImgRows);
 
         DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, false, model.IsDataSigned());
-        debug("1");
+
         std::vector<object_detection::DetectionResult> results;
 #ifdef MODEL_TYPE_SSD
         const object_detection::PostProcessParams postProcessParams {
@@ -199,16 +199,13 @@ using namespace arm::app::object_detection;
             object_detection::ModelType::YOLO
         };
 #endif
-        debug("2");
         DetectorPostProcess postProcess = DetectorPostProcess(outputTensor0, outputTensor1, outputTensor2,
                 results, postProcessParams);
-        debug("3");
 
         /* Ensure there are no results leftover from previous inference when running all. */
         results.clear();
 
         hal_camera_start();
-        debug("4");
 
 
         uint32_t capturedFrameSize = 0;
@@ -217,7 +214,6 @@ using namespace arm::app::object_detection;
             printf_err("hal_camera_get_captured_frame failed");
             return false;
         }
-        debug("5");
 
         {
             ScopedLVGLLock lv_lock;
@@ -225,7 +221,6 @@ using namespace arm::app::object_detection;
             /* Display the 480x480 crop on the LCD */
             write_to_lvgl_buf(CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE,
                             fullImage, &lvgl_image[0][0]);
-            debug("6");
             lv_obj_invalidate(ScreenLayoutImageObject());
             lv_led_on(ScreenLayoutLEDObject());
 
