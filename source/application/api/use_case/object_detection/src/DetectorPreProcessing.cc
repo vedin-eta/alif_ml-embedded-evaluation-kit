@@ -62,10 +62,14 @@ namespace app {
         uint8_t* tensorData = this->m_inputTensor->data.uint8;
 
         /* Extract crop from source image row by row */
-        for (int y = 0; y < cropHeight; y++) {
-            const uint8_t* srcRow = input + ((cropOffsetY + y) * srcWidth + cropOffsetX) * channels;
-            uint8_t* dstRow = tensorData + y * cropWidth * channels;
-            std::memcpy(dstRow, srcRow, cropWidth * channels);
+        if (srcWidth == cropWidth && srcHeight == cropHeight) {
+            std::memcpy(this->m_inputTensor->data.data, input, this->m_inputTensor->bytes);
+        } else {
+            for (int y = 0; y < cropHeight; y++) {
+                const uint8_t* srcRow = input + ((cropOffsetY + y) * srcWidth + cropOffsetX) * channels;
+                uint8_t* dstRow = tensorData + y * cropWidth * channels;
+                std::memcpy(dstRow, srcRow, cropWidth * channels);
+            }
         }
 
         debug("Input tensor populated with crop (%dx%d from %dx%d at offset %d,%d)\n",
