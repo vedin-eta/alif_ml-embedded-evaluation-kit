@@ -88,6 +88,24 @@ constexpr const char* classLabels[] = {
     "Cow", "Elephant", "Bear", "Zebra", "Giraffe"
 };
 
+#if VERIFY_TEST_OUTPUT
+static void DumpInputs(const Model& model, const char* message)
+{
+    info("%s\n", message);
+    for (size_t inputIndex = 0; inputIndex < model.GetNumInputs(); inputIndex++) {
+        arm::app::DumpTensor(model.GetInputTensor(inputIndex));
+    }
+}
+
+static void DumpOutputs(const Model& model, const char* message)
+{
+    info("%s\n", message);
+    for (size_t outputIndex = 0; outputIndex < model.GetNumOutputs(); outputIndex++) {
+        arm::app::DumpTensor(model.GetOutputTensor(outputIndex));
+    }
+}
+#endif /* VERIFY_TEST_OUTPUT */
+
 namespace object_detection {
 using namespace arm::app::object_detection;
 }
@@ -300,6 +318,10 @@ using namespace arm::app::object_detection;
                 return false;
             }
             preprocessEnd = Get_SysTick_Cycle_Count32();
+
+#if VERIFY_TEST_OUTPUT
+            DumpInputs(model, "=INPUT TENSOR=");
+#endif
 
             /* Run inference over this image. */
             inferenceStart = Get_SysTick_Cycle_Count32();
