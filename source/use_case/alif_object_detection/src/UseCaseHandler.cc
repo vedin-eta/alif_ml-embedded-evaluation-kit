@@ -45,7 +45,7 @@
 
 /* Camera and display configuration */
 #define CAMERA_IMAGE_SIZE       240     // Full camera capture size
-#define MODEL_INPUT_SIZE        192     // Model inference input size (256x256 centered)
+#define MODEL_INPUT_SIZE        224     // Model inference input size (256x256 centered)
 
 /* Display buffer configuration */
 #define LV_ZOOM                 (2 * 256)  // 1:1 scale (no zoom)
