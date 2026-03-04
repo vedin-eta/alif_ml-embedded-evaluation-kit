@@ -428,7 +428,9 @@ int crop_and_interpolate( uint8_t *image,
     }
     tprof2 = Get_SysTick_Cycle_Count32();
     // What are dimensions that maintain aspect ratio?
-    calculate_crop_dims(srcWidth, srcHeight, dstWidth, dstHeight, &cropWidth, &cropHeight);
+    // calculate_crop_dims(srcWidth, srcHeight, dstWidth, dstHeight, &cropWidth, &cropHeight);
+    cropWidth = dstWidth;
+    cropHeight = dstHeight;
     // Now crop to that dimension, in place
     int res = frame_crop(
         image,
