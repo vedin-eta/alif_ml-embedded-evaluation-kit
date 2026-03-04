@@ -48,7 +48,7 @@
 #define MODEL_INPUT_SIZE        192     // Model inference input size (256x256 centered)
 
 /* Display buffer configuration */
-#define LV_ZOOM                 (1 * 256)  // 1:1 scale (no zoom)
+#define LV_ZOOM                 (2 * 256)  // 1:1 scale (no zoom)
 #define MODEL_CROP_OFFSET       ((CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2)
 /* Bounding box coordinate mapping: model space (256x256) to display space (480x480) */
 
@@ -521,8 +521,8 @@ using namespace arm::app::object_detection;
                  result.m_x0, result.m_y0, result.m_w, result.m_h);
 
             /* Apply additional LVGL scaling if needed */
-            int frameX = floor(result.m_x0 * xScale + MODEL_CROP_OFFSET);
-            int frameY = floor(result.m_y0 * yScale + MODEL_CROP_OFFSET);
+            int frameX = floor(result.m_x0 * xScale + MODEL_CROP_OFFSET * xScale);
+            int frameY = floor(result.m_y0 * yScale + MODEL_CROP_OFFSET * yScale);
             int frameW = ceil(result.m_w * xScale);
             int frameH = ceil(result.m_h * yScale);
 
@@ -544,6 +544,10 @@ using namespace arm::app::object_detection;
     {
         lv_obj_t *frame = ScreenLayoutImageHolderObject();
 
+        /* Calculate scale factors from frame size */
+        float xScale = (float) lv_obj_get_content_width(frame) / CAMERA_IMAGE_SIZE;
+        float yScale = (float) lv_obj_get_content_height(frame) / CAMERA_IMAGE_SIZE;
+
         /* Delete old active area box if it exists */
         if (activeAreaBox != nullptr) {
             lv_obj_del(activeAreaBox);
@@ -552,9 +556,9 @@ using namespace arm::app::object_detection;
         /* Create new active area box */
         activeAreaBox = lv_obj_create(frame);
 
-        /* Calculate position to center MODEL_INPUT_SIZE box on display */
-        int activeAreaDisplaySize = MODEL_INPUT_SIZE;  // 192x192 in display space
-        int centerOffset = (CAMERA_IMAGE_SIZE - MODEL_INPUT_SIZE) / 2;  // Center in 480x480
+        /* Calculate scaled position to center MODEL_INPUT_SIZE box on display */
+        int activeAreaDisplaySize = MODEL_INPUT_SIZE * xScale;  // Scale the box size
+        int centerOffset = MODEL_CROP_OFFSET * xScale;          // Scale the offset
 
         lv_obj_set_size(activeAreaBox, activeAreaDisplaySize, activeAreaDisplaySize);
         lv_obj_add_style(activeAreaBox, &activeAreaStyle, LV_PART_MAIN);
