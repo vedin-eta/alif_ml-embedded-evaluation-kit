@@ -397,7 +397,7 @@ using namespace arm::app::object_detection;
 #endif
 
             /* Draw active area box first (behind detection boxes) */
-            DrawActiveAreaBox();
+            // DrawActiveAreaBox();
 
             /* Draw boxes. */
             DrawDetectionBoxes(results, CAMERA_IMAGE_SIZE, CAMERA_IMAGE_SIZE);
