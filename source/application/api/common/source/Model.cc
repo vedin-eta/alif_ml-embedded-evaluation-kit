@@ -75,7 +75,7 @@ bool arm::app::Model::Init(uint8_t* tensorArenaAddr,
     } else {
         debug("Using existing allocator @ 0x%p\n", this->m_pAllocator);
     }
-    // if fist inference
+    // if first inference
     this->m_pInterpreter = std::make_unique<tflite::MicroInterpreter>(
         this->m_pModel, this->GetOpResolver(), this->m_pAllocator, nullptr, &layerProfiler);
 
@@ -84,7 +84,7 @@ bool arm::app::Model::Init(uint8_t* tensorArenaAddr,
         return false;
     }
     layerProfiler.Reset();
-    //if second inference
+    //if second inference, no per-layer profiler for more accurate energy measurement
     // this->m_pInterpreter = std::make_unique<tflite::MicroInterpreter>(
       // this->m_pModel, this->GetOpResolver(), this->m_pAllocator, nullptr, nullptr);
 

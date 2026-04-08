@@ -10,7 +10,7 @@ uint32_t LayerProfiler::BeginEvent(const char* tag)
         return 0;
     }
     if (m_opIndex < MAX_LAYERS) {
-        m_layerOps[m_opIndex] = tag;   // ⬅️ OVO JE KLJUČ
+        m_layerOps[m_opIndex] = tag;   
         m_startTicks = tflite::GetCurrentTimeTicks();
     }
     return m_opIndex;

@@ -162,14 +162,13 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
                             str_inf.c_str(), str_inf.size(),
                             dataPsnTxtInfStartX, dataPsnTxtInfStartY, 0);
 
-    info("Final Hankicas results:\n");
+    info("Final results:\n");
     info("Total number of inferences: 1\n");
     profiler.PrintProfilingResult();
 
 #if VERIFY_TEST_OUTPUT
     DumpOutputs(model, "output tensors post inference");
 #endif /* VERIFY_TEST_OUTPUT */
-// define ovdje neki energy i povezi tamo 
     // second run for energy measurement, no profiling
     model.EnableLayerProfiling(false); 
     RunInference(model, profiler, false);
