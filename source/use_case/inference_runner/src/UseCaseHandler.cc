@@ -132,6 +132,7 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
     if (!inputs_populated)
         PopulateInputTensor(model);
 
+    model.EnableLayerProfiling(true);
     /* Strings for presentation/logging. */
     std::string str_inf{"Running inference... "};
 
@@ -143,22 +144,36 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
         return false;
     }
 
+    const auto& lp = model.GetLayerProfiler();
+
+    for (uint32_t i = 0; i < lp.GetNumLayers(); ++i) {
+        info(
+            "LAYER %lu OP %s TICKS: %lu\n",
+            i,
+            lp.GetLayerOp(i),
+            lp.GetLayerTicks(i)
+        );
+    }
+
+
     /* Erase. */
     str_inf = std::string(str_inf.size(), ' ');
     hal_lcd_display_text(
                             str_inf.c_str(), str_inf.size(),
                             dataPsnTxtInfStartX, dataPsnTxtInfStartY, 0);
 
-    info("Final results:\n");
+    info("Final Hankicas results:\n");
     info("Total number of inferences: 1\n");
     profiler.PrintProfilingResult();
 
 #if VERIFY_TEST_OUTPUT
     DumpOutputs(model, "output tensors post inference");
 #endif /* VERIFY_TEST_OUTPUT */
-
+// define ovdje neki energy i povezi tamo 
     // second run for energy measurement, no profiling
+    model.EnableLayerProfiling(false); 
     RunInference(model, profiler, false);
+    model.EnableLayerProfiling(true);
 #if defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE)
     PopulateDynamicOfm(model);
 #endif /* defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE) */

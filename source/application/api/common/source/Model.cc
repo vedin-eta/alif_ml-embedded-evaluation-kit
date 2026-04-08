@@ -21,7 +21,7 @@
 #include <memory>
 
 arm::app::Model::Model() : m_inited(false), m_type(kTfLiteNoType) {}
-
+static arm::app::LayerProfiler layerProfiler;  
 /* Initialise the model */
 bool arm::app::Model::Init(uint8_t* tensorArenaAddr,
                            uint32_t tensorArenaSize,
@@ -75,14 +75,18 @@ bool arm::app::Model::Init(uint8_t* tensorArenaAddr,
     } else {
         debug("Using existing allocator @ 0x%p\n", this->m_pAllocator);
     }
-
+    // if fist inference
     this->m_pInterpreter = std::make_unique<tflite::MicroInterpreter>(
-        this->m_pModel, this->GetOpResolver(), this->m_pAllocator);
+        this->m_pModel, this->GetOpResolver(), this->m_pAllocator, nullptr, &layerProfiler);
 
     if (!this->m_pInterpreter) {
         printf_err("Failed to allocate interpreter\n");
         return false;
     }
+    layerProfiler.Reset();
+    //if second inference
+    // this->m_pInterpreter = std::make_unique<tflite::MicroInterpreter>(
+      // this->m_pModel, this->GetOpResolver(), this->m_pAllocator, nullptr, nullptr);
 
     /* Allocate memory from the tensor_arena for the model's tensors. */
     info("Allocating tensors\n");
@@ -240,10 +244,21 @@ bool arm::app::Model::ContainsEthosUOperator() const
     return false;
 }
 
+void arm::app::Model::EnableLayerProfiling(bool enable)
+{
+    layerProfiler.SetEnabled(enable);
+}
+const arm::app::LayerProfiler& arm::app::Model::GetLayerProfiler() const
+{
+    return layerProfiler;
+}
+
+
 bool arm::app::Model::RunInference()
 {
     bool inference_state = false;
     if (this->m_pModel && this->m_pInterpreter) {
+        layerProfiler.Reset();
         if (kTfLiteOk != this->m_pInterpreter->Invoke()) {
             printf_err("Invoke failed.\n");
         } else {
@@ -254,6 +269,7 @@ bool arm::app::Model::RunInference()
     }
     return inference_state;
 }
+
 
 TfLiteTensor* arm::app::Model::GetInputTensor(size_t index) const
 {

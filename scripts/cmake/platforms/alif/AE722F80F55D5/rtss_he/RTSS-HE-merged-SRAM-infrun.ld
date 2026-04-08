@@ -27,9 +27,18 @@
  * limitations under the License.
  */
 
+/* HE Core Merged SRAM Inference Runner Linker Script
+ * Optimized for large model inference on M55-HE core
+ * Key differences from HP:
+ *   - DTCM: 256KB (vs 1MB on HP)
+ *   - Clock: 160MHz (vs 400MHz on HP)
+ *   - NPU: 128 MAC (vs 256 MAC on HP)
+ *   - SRAM: 6.5MB merged (same as HP - can access both SRAM0+SRAM1)
+ */
+
 __STACK_SIZE = 0x00008000;
-__HEAP_SIZE  = 0x00008000;
-__ROM_BASE = 0x80480000;
+__HEAP_SIZE  = 0x00010000;
+__ROM_BASE = 0x80008000;  /* Same as HP - since HP and HE never run simultaneously */
 __ROM_SIZE = 0x0047F000;
 __OSPI_FLASH_BASE = 0xC0000000;
 __OSPI_FLASH_SIZE = 0x02000000;
@@ -37,12 +46,16 @@ __OSPI_FLASH_SIZE = 0x02000000;
 MEMORY
 {
   ITCM  (rwx) : ORIGIN = 0x01000000, LENGTH = 0x00040000
-  DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00040000
-  SRAM0 (rwx) : ORIGIN = 0x02000000, LENGTH = 0x00400000
-  SRAM1 (rwx) : ORIGIN = 0x08000000, LENGTH = 0x00280000
+  DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00040000  /* HE has 256KB DTCM */
+  SRAM  (rwx) : ORIGIN = 0x02000000, LENGTH = 0x00680000  /* Combined SRAM0+1 view (6.5MB) - same address as HP */
   MRAM  (rx)  : ORIGIN = __ROM_BASE, LENGTH = __ROM_SIZE
   OSPI_FLASH (rx) : ORIGIN = __OSPI_FLASH_BASE, LENGTH = __OSPI_FLASH_SIZE
 }
+
+/* Memory overflow detection symbols */
+__DTCM_LIMIT = ORIGIN(DTCM) + LENGTH(DTCM);
+__SRAM_LIMIT = ORIGIN(SRAM) + LENGTH(SRAM);
+__ITCM_LIMIT = ORIGIN(ITCM) + LENGTH(ITCM);
 
 ENTRY(Reset_Handler)
 
@@ -71,9 +84,9 @@ SECTIONS
     LONG ( LOADADDR(.data.dtcm.at_mram) )
     LONG ( ADDR(.data.dtcm.at_mram) )
     LONG ( SIZEOF(.data.dtcm.at_mram)/4 )
-    LONG ( LOADADDR(.data.sram0.at_mram) )
-    LONG ( ADDR(.data.sram0.at_mram) )
-    LONG ( SIZEOF(.data.sram0.at_mram)/4 )
+    LONG ( LOADADDR(.data.sram.at_mram) )
+    LONG ( ADDR(.data.sram.at_mram) )
+    LONG ( SIZEOF(.data.sram.at_mram)/4 )
     __copy_table_end__ = .;
   } > MRAM
 
@@ -84,10 +97,8 @@ SECTIONS
     LONG (SIZEOF(.bss.itcm)/4)
     LONG (ADDR(.bss))
     LONG (SIZEOF(.bss)/4)
-    LONG (ADDR(.bss.sram0))
-    LONG (SIZEOF(.bss.sram0)/4)
-    LONG (ADDR(.bss.sram1))
-    LONG (SIZEOF(.bss.sram1)/4)
+    LONG (ADDR(.bss.sram))
+    LONG (SIZEOF(.bss.sram)/4)
     __zero_table_end__ = .;
   } > MRAM
 
@@ -98,39 +109,35 @@ SECTIONS
 
   .text.itcm.at_mram : ALIGN(8)
   {
-    /* ITCM has only fast LVGL and RAM vectors */
+    /* ITCM left mostly empty for inference_runner - only fast code if needed */
     *(fast_code)
   } > ITCM AT> MRAM
 
   .data.dtcm.at_mram : ALIGN(8)
   {
-    /* DTCM has all read-write data, including NPU activation buffer and audio processing buffers */
+    /* DTCM has critical read-write data */
     *(vtable)
     *(.data)
     *(.data*)
+    *arm_common_tables.c.obj(.data* .rodata*)
 
     KEEP(*(.jcr*))
-
   } > DTCM AT> MRAM
 
-  /* Place non-zero code/data here if required in SRAM0 */
-  .data.sram0.at_mram : ALIGN(8)
+  /* Place non-zero code/data here if required in SRAM */
+  .data.sram.at_mram : ALIGN(8)
   {
     * (ifm)
-  } > SRAM0 AT> MRAM
+  } > SRAM AT> MRAM
 
-  .bss.sram0 (NOLOAD) : ALIGN(8)
+  .bss.sram (NOLOAD) : ALIGN(8)
   {
     * (.bss.large_ram)                     /* Large LVGL buffers */
     * (.bss.camera_frame_buf)              /* Camera Frame Buffer */
     * (.bss.camera_frame_bayer_to_rgb_buf) /* (Optional) Camera Frame Buffer for Bayer to RGB Convertion.*/
     * (.bss.lcd_image_buf)
-  } > SRAM0
-
-  .bss.sram1 (NOLOAD) : ALIGN(8)
-  {
-    * (.bss.NoInit.activation_buf_sram) /* 2MB */
-  } > SRAM1
+    * (.bss.NoInit.activation_buf_sram) /* Large activation buffer in SRAM */
+  } > SRAM
 
   .bss.itcm (NOLOAD) : ALIGN(8)
   {
@@ -226,4 +233,21 @@ SECTIONS
   {
     *(nn_model_ext_flash)
   } > OSPI_FLASH
+
+  /* Memory overflow assertions - will cause linker error if exceeded */
+
+  /* DTCM checks: 256KB total for HE core */
+  ASSERT(__StackTop <= __DTCM_LIMIT, "ERROR: DTCM overflow - stack exceeds 256KB DTCM limit")
+  ASSERT(__HeapLimit <= __StackLimit, "ERROR: DTCM overflow - heap collides with stack")
+  ASSERT(__bss_end__ <= __HeapLimit, "ERROR: DTCM overflow - .bss section collides with heap")
+  ASSERT(SIZEOF(.data.dtcm.at_mram) + SIZEOF(.bss) + __HEAP_SIZE + __STACK_SIZE <= LENGTH(DTCM), "ERROR: DTCM overflow - total DTCM usage exceeds 256KB limit")
+
+  /* SRAM checks: 6.5MB merged SRAM0+SRAM1 */
+  ASSERT(SIZEOF(.bss.sram) + SIZEOF(.data.sram.at_mram) <= LENGTH(SRAM), "ERROR: SRAM overflow - data exceeds 6.5MB SRAM limit")
+
+  /* ITCM checks: 256KB */
+  ASSERT(SIZEOF(.text.itcm.at_mram) + SIZEOF(.bss.itcm) + SIZEOF(.vectors.itcm) <= LENGTH(ITCM), "ERROR: ITCM overflow - code exceeds 256KB ITCM limit")
+
+  /* MRAM checks */
+  ASSERT(SIZEOF(.startup.at_mram) + SIZEOF(.copy.table.at_mram) + SIZEOF(.zero.table.at_mram) + SIZEOF(.readonly.at_mram) + SIZEOF(.data.dtcm.at_mram) + SIZEOF(.data.sram.at_mram) + SIZEOF(.text.itcm.at_mram) <= __ROM_SIZE, "ERROR: MRAM overflow - total program size exceeds MRAM capacity")
 }
