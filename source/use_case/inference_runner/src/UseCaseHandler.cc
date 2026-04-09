@@ -144,7 +144,7 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
         return false;
     }
 
-    const auto& lp = model.GetLayerProfiler();
+    /*const auto& lp = model.GetLayerProfiler();
 
     for (uint32_t i = 0; i < lp.GetNumLayers(); ++i) {
         info(
@@ -153,7 +153,7 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
             lp.GetLayerOp(i),
             lp.GetLayerTicks(i)
         );
-    }
+    }*/
 
 
     /* Erase. */
