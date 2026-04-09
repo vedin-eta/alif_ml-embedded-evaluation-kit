@@ -77,7 +77,7 @@ bool arm::app::Model::Init(uint8_t* tensorArenaAddr,
     }
     // if first inference
     this->m_pInterpreter = std::make_unique<tflite::MicroInterpreter>(
-        this->m_pModel, this->GetOpResolver(), this->m_pAllocator, nullptr, nullptr);
+        this->m_pModel, this->GetOpResolver(), this->m_pAllocator, nullptr, &layerProfiler);
 
     if (!this->m_pInterpreter) {
         printf_err("Failed to allocate interpreter\n");
