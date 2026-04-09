@@ -70,21 +70,27 @@ namespace app {
         return true;
     }
 
-    bool RunInference(arm::app::Model& model, Profiler& profiler, bool profile)
+    bool RunInference(arm::app::Model& model, Profiler& profiler, bool layer_profile)
     {
-        /* Set pre-inference GPIO high for 50ms */
-        if (!profile) {
+        // Set pre-inference GPIO high for 50ms if not doing layer timing which adds overhead
+        if (!layer_profile) {
             inference_timing_pre_start();
             sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
             inference_timing_pre_end();
         }
 
-        if (profile) profiler.StartProfiling("Inference");
+        // only measuring profiling time if not doing layer profiling
+        if (!layer_profile) profiler.StartProfiling("Inference");
+
+        if (layer_profile) model.EnableLayerProfiling(true);
+        else model.EnableLayerProfiling(false);
+
         bool runInf = model.RunInference();
-        if (profile) profiler.StopProfiling();
+
+        if (!layer_profile) profiler.StopProfiling();
 
         /* Set post-inference GPIO high for 50ms */
-        if (!profile) {
+        if (!layer_profile) {
             inference_timing_post_start();
             sleep_or_wait_msec(50);  /* Accurate delay using SysTick or PMU */
             inference_timing_post_end();
