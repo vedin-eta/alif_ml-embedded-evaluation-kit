@@ -170,9 +170,7 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
     DumpOutputs(model, "output tensors post inference");
 #endif /* VERIFY_TEST_OUTPUT */
     // second run for energy measurement, no profiling
-    model.EnableLayerProfiling(false); 
     RunInference(model, profiler, false);
-    model.EnableLayerProfiling(true);
 #if defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE)
     PopulateDynamicOfm(model);
 #endif /* defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE) */
