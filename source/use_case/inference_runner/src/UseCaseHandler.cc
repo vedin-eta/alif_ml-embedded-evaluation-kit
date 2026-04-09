@@ -164,7 +164,6 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
 
     info("Final results:\n");
     info("Total number of inferences: 1\n");
-    profiler.PrintProfilingResult();
 
 #if VERIFY_TEST_OUTPUT
     DumpOutputs(model, "output tensors post inference");
@@ -174,7 +173,7 @@ bool RunInferenceHandler(ApplicationContext& ctx, bool inputs_populated)
 #if defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE)
     PopulateDynamicOfm(model);
 #endif /* defined (DYNAMIC_OFM_BASE) && defined(DYNAMIC_OFM_SIZE) */
-
+    profiler.PrintProfilingResult();
     return true;
 }
 
