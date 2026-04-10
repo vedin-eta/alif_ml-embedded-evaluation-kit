@@ -87,6 +87,25 @@ static bool WaitForInputChoice()
     }
 }
 
+static bool WaitForProfilerChoice()
+{
+    info("\n=== Profiler Selection ===\n");
+    printf("Run with profiler? (y/n): ");
+    fflush(stdout);
+    while (true) {
+        char c = uart_getchar();
+        if (c == 'y' || c == 'Y') {
+            printf("Y\n");
+            return true;
+        }elsif (c == 'n' || c == 'N')
+        {
+            printf("N\n");
+            return false;
+        }else {
+            printf("Invalid input. Please enter 'y' or 'n'.\n");
+        }
+    }
+}
 /**
  * @brief Load model input tensor from UART using optimized bulk transfer
  * @param model Reference to the model
