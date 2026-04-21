@@ -20,7 +20,7 @@
 #include "TensorFlowLiteMicro.hpp"
 
 #include <cstdint>
-
+#include "LayerProfiler.hpp"
 namespace arm {
 namespace app {
 
@@ -104,6 +104,11 @@ namespace app {
 
         /** @brief   Gets a pointer to the tensor arena. */
         uint8_t* GetTensorArena();
+
+        /* @brief Per-layer profiler methods*/
+        void EnableLayerProfiling(bool enable);
+        const LayerProfiler& GetLayerProfiler() const;
+
 
     protected:
         /** @brief      Gets the pointer to the NN model data array.

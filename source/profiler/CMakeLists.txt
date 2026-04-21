@@ -27,12 +27,13 @@ add_library(profiler STATIC)
 
 target_sources(profiler
         PRIVATE
+        LayerProfiler.cc
         Profiler.cc)
 
 target_include_directories(profiler PUBLIC include)
 
 # Profiling API depends on the logging interface and the HAL library.
-target_link_libraries(profiler PRIVATE log hal)
+target_link_libraries(profiler PRIVATE log hal tensorflow-lite-micro)
 
 # Display status
 message(STATUS "CMAKE_CURRENT_SOURCE_DIR: " ${CMAKE_CURRENT_SOURCE_DIR})

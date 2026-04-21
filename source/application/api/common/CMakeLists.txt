@@ -51,6 +51,7 @@ target_link_libraries(${COMMON_UC_UTILS_TARGET}
     PUBLIC
     log                     # Logging functions
     arm_math                # Math functions
+    profiler
     tensorflow-lite-micro)  # TensorFlow Lite Micro library
 
 # Display status:
